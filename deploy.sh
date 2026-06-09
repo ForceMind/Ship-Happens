@@ -1,50 +1,69 @@
 #!/bin/bash
 
 # ==============================================================================
-# 沉没还是暴富 (Sink or Rich) 一键部署脚本
-# 支持: Ubuntu/Debian/CentOS/RHEL/Arch 等各种 Linux 发行版
-# 功能: 自动安装依赖 (Node.js/npm), 自动拉取更新, 自动规避端口, 打包混淆代码
+# 沉没还是暴富 (Sink or Rich) 一键部署脚本 (项目独立环境版)
 # ==============================================================================
 
 # 设置文本颜色
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo -e "${GREEN}===========================================${NC}"
 echo -e "${GREEN}    沉没还是暴富 一键部署与混淆打包脚本    ${NC}"
 echo -e "${GREEN}===========================================${NC}"
 
-# 1. 检测操作系统包管理器并安装基础依赖
-echo -e "${YELLOW}[1/6] 正在检测包管理器并安装 curl/git...${NC}"
-if command -v apt-get >/dev/null; then
-    sudo apt-get update
-    sudo apt-get install -y curl git
-elif command -v yum >/dev/null; then
-    sudo yum install -y curl git
-elif command -v dnf >/dev/null; then
-    sudo dnf install -y curl git
-elif command -v pacman >/dev/null; then
-    sudo pacman -Sy --noconfirm curl git
-elif command -v apk >/dev/null; then
-    sudo apk add curl git
-else
-    echo -e "${RED}无法识别的包管理器，请手动安装 curl 和 git。${NC}"
-    exit 1
+# 1. 检测必要的系统工具
+echo -e "${YELLOW}[1/6] 正在检测基础系统工具 (curl, tar, xz)...${NC}"
+for cmd in curl tar xz; do
+    if ! command -v $cmd >/dev/null 2>&1; then
+        echo -e "${RED}系统缺少 $cmd 命令，请先使用系统包管理器(apt/yum)安装它。${NC}"
+        exit 1
+    fi
+done
+
+# 2. 在本项目内独立安装 Node.js (不影响系统环境)
+NODE_VERSION="v22.14.0"
+LOCAL_NODE_DIR="$(pwd)/.local-node"
+export PATH="$LOCAL_NODE_DIR/bin:$PATH"
+
+echo -e "${YELLOW}[2/6] 检查项目专属的 Node.js 环境...${NC}"
+
+# 检查当前架构
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64) NODE_ARCH="x64" ;;
+    aarch64) NODE_ARCH="arm64" ;;
+    armv7l) NODE_ARCH="armv7l" ;;
+    *) echo -e "${RED}不支持的架构: $ARCH${NC}"; exit 1 ;;
+esac
+
+# 检查本地是否已安装符合版本的 Node
+NEED_INSTALL=true
+if [ -f "$LOCAL_NODE_DIR/bin/node" ]; then
+    CURRENT_VER=$("$LOCAL_NODE_DIR/bin/node" -v)
+    if [ "$CURRENT_VER" = "$NODE_VERSION" ]; then
+        NEED_INSTALL=false
+        echo -e "${GREEN}已检测到项目专属 Node.js ($CURRENT_VER)，跳过下载。${NC}"
+    fi
 fi
 
-# 2. 检测并安装 Node.js 和 npm
-echo -e "${YELLOW}[2/6] 正在检测 Node.js 环境...${NC}"
-if ! command -v node >/dev/null; then
-    echo -e "${YELLOW}未检测到 Node.js，正在通过 NVM 自动安装 LTS 版本...${NC}"
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    nvm install --lts
-    nvm use --lts
-else
-    echo -e "${GREEN}Node.js 已安装: $(node -v)${NC}"
+if [ "$NEED_INSTALL" = true ]; then
+    echo -e "${YELLOW}正在为本项目下载并隔离安装 Node.js $NODE_VERSION ($NODE_ARCH)...${NC}"
+    rm -rf "$LOCAL_NODE_DIR"
+    mkdir -p "$LOCAL_NODE_DIR"
+    
+    DOWNLOAD_URL="https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz"
+    echo "下载地址: $DOWNLOAD_URL"
+    
+    curl -fL "$DOWNLOAD_URL" -o "node-local.tar.xz" || { echo -e "${RED}下载 Node.js 失败！${NC}"; exit 1; }
+    
+    echo -e "${YELLOW}正在解压...${NC}"
+    tar -xf node-local.tar.xz -C "$LOCAL_NODE_DIR" --strip-components=1
+    rm -f node-local.tar.xz
+    
+    echo -e "${GREEN}项目专属 Node.js 安装成功: $(node -v)${NC}"
 fi
 
 # 3. 自动更新代码
@@ -60,7 +79,7 @@ echo -e "${YELLOW}[4/6] 正在安装依赖包...${NC}"
 npm install
 
 # 确保安装了混淆工具 terser
-if ! grep -q "terser" package.json; then
+if ! grep -q "\"terser\"" package.json; then
     echo -e "${YELLOW}检测到未安装 terser 混淆插件，正在自动安装...${NC}"
     npm install -D terser
 fi
@@ -77,22 +96,15 @@ echo -e "${GREEN}编译混淆成功，打包文件位于 dist/ 目录。${NC}"
 # 6. 端口检测与启动
 echo -e "${YELLOW}[6/6] 准备启动预览服务，正在扫描可用端口...${NC}"
 
-# 如果没有安装 vite，全局安装用于预览
-if ! command -v vite >/dev/null && ! npx vite --version >/dev/null 2>&1; then
-    npm install -g vite
-fi
-
 # 自动规避端口占用 (从 4173 开始往上找)
 PORT=4173
 while :
 do
-    # 检查端口是否被占用 (支持 netstat 或 ss)
     if command -v ss >/dev/null; then
         (ss -tuln | grep -q ":$PORT ") || break
     elif command -v netstat >/dev/null; then
         (netstat -tuln | grep -q ":$PORT ") || break
     else
-        # fallback
         (echo >/dev/tcp/127.0.0.1/$PORT) >/dev/null 2>&1 || break
     fi
     echo -e "${YELLOW}端口 $PORT 被占用，尝试端口 $((PORT+1))...${NC}"
@@ -101,8 +113,8 @@ done
 
 echo -e "${GREEN}===========================================${NC}"
 echo -e "${GREEN}部署完成！游戏将在端口 $PORT 上运行。${NC}"
-echo -e "${GREEN}正在启动服务 (按 Ctrl+C 停止)...${NC}"
+echo -e "${GREEN}正在启动服务 (使用本项目专属 Node.js，按 Ctrl+C 停止)...${NC}"
 echo -e "${GREEN}===========================================${NC}"
 
-# 启动服务并在后台运行或前台挂起
+# 使用本地的 npx 启动 vite
 npx vite preview --port $PORT --host 0.0.0.0
