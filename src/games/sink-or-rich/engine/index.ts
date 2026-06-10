@@ -26,6 +26,7 @@ export function createDefaultPlayerState(): PlayerState {
     unlockedRoutes: ['route_coastal'],
     unlockedPorts: ['port_royal', 'port_tortuga'],
     marketMultiplier: 1.0,
+    casinoProfitThisPort: 0,
   };
 }
 
@@ -162,7 +163,7 @@ export function startVoyage(player: PlayerState, route: Route, destinationPortId
   }
 
   return {
-    player: { ...player, voyageCount: player.voyageCount + 1 },
+    player: { ...player, voyageCount: player.voyageCount + 1, casinoProfitThisPort: 0 },
     voyage: {
       route,
       destinationPortId,

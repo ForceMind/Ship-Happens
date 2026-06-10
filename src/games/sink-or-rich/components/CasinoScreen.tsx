@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PlayerState } from '../types';
+import { clampCasinoPayout } from '../content/casino';
 import { Modal } from './Modal';
 import styles from './styles.module.css';
 
@@ -10,9 +11,9 @@ interface Props {
 }
 
 const ROULETTE_OPTIONS = [
-  { color: 'red', label: '红色 (1赔3)' },
-  { color: 'black', label: '黑色 (1赔3)' },
-  { color: 'green', label: '绿色 (1赔3)' }
+  { color: 'red', label: '红色' },
+  { color: 'black', label: '黑色' },
+  { color: 'green', label: '绿色' }
 ];
 
 const SLOT_SYMBOLS = ['🍒', '🍋', '💎', '🔔', '🍉', '☠️'];
@@ -37,11 +38,16 @@ export const CasinoScreen: React.FC<Props> = ({ player, setPlayer, onLeave }) =>
   };
 
   const playRoulette = () => {
+    if (spinningRoulette) return;
     if (player.gold < betAmount) {
       setModal({ title: '余额不足', msg: '没钱还想赌？去找银行借点吧！', onConfirm: () => setModal(null) });
       return;
     }
-    setPlayer({ ...player, gold: player.gold - betAmount });
+    const stake = betAmount;
+    const startingGold = player.gold;
+    const profitBeforeRound = player.casinoProfitThisPort || 0;
+
+    setPlayer({ ...player, gold: startingGold - stake, casinoProfitThisPort: profitBeforeRound - stake });
     setSpinningRoulette(true);
     setRouletteResult(null);
 
@@ -56,21 +62,26 @@ export const CasinoScreen: React.FC<Props> = ({ player, setPlayer, onLeave }) =>
       setRouletteResult(outcome);
       if (outcome === rouletteChoice) {
         const multiplier = 3;
-        const winnings = betAmount * multiplier;
-        setPlayer({ ...player, gold: player.gold + winnings });
+        const winnings = clampCasinoPayout(stake * multiplier, stake, profitBeforeRound);
+        setPlayer({ ...player, gold: startingGold - stake + winnings, casinoProfitThisPort: profitBeforeRound - stake + winnings });
         setModal({ title: '赢啦！', msg: `开出了 ${outcome === 'red' ? '红色' : outcome === 'black' ? '黑色' : '绿色'}！恭喜赢取 ${winnings} 金币！`, onConfirm: () => setModal(null) });
       } else {
-        setModal({ title: '输了', msg: `开出了 ${outcome === 'red' ? '红色' : outcome === 'black' ? '黑色' : '绿色'}！筹码全被收走了...（大转盘期望值严格为1.0，只要你玩得够久，不输不赢）`, onConfirm: () => setModal(null) });
+        setModal({ title: '输了', msg: `开出了 ${outcome === 'red' ? '红色' : outcome === 'black' ? '黑色' : '绿色'}！筹码全被收走了...`, onConfirm: () => setModal(null) });
       }
     }, 1500);
   };
 
   const playSlots = () => {
+    if (spinningSlots) return;
     if (player.gold < betAmount) {
       setModal({ title: '余额不足', msg: '没钱还想赌？去找银行借点吧！', onConfirm: () => setModal(null) });
       return;
     }
-    setPlayer({ ...player, gold: player.gold - betAmount });
+    const stake = betAmount;
+    const startingGold = player.gold;
+    const profitBeforeRound = player.casinoProfitThisPort || 0;
+
+    setPlayer({ ...player, gold: startingGold - stake, casinoProfitThisPort: profitBeforeRound - stake });
     setSpinningSlots(true);
     setSlotResult(['🔄', '🔄', '🔄']);
 
@@ -86,18 +97,18 @@ export const CasinoScreen: React.FC<Props> = ({ player, setPlayer, onLeave }) =>
       if (result[0] === result[1] && result[1] === result[2]) {
         // 3 matches
         if (result[0] === '☠️') {
-          const winnings = betAmount * 21;
-          setPlayer({ ...player, gold: player.gold + winnings });
+          const winnings = clampCasinoPayout(stake * 21, stake, profitBeforeRound);
+          setPlayer({ ...player, gold: startingGold - stake + winnings, casinoProfitThisPort: profitBeforeRound - stake + winnings });
           setModal({ title: '💀海盗大奖💀', msg: `摇出三个骷髅头！狂揽 ${winnings} 金币！`, onConfirm: () => setModal(null) });
         } else {
-          const winnings = betAmount * 3;
-          setPlayer({ ...player, gold: player.gold + winnings });
+          const winnings = clampCasinoPayout(stake * 3, stake, profitBeforeRound);
+          setPlayer({ ...player, gold: startingGold - stake + winnings, casinoProfitThisPort: profitBeforeRound - stake + winnings });
           setModal({ title: '大奖！', msg: `摇出三个相同图案！赢得 ${winnings} 金币！`, onConfirm: () => setModal(null) });
         }
       } else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) {
         // 2 matches
-        const winnings = betAmount * 2;
-        setPlayer({ ...player, gold: player.gold + winnings });
+        const winnings = clampCasinoPayout(stake * 2, stake, profitBeforeRound);
+        setPlayer({ ...player, gold: startingGold - stake + winnings, casinoProfitThisPort: profitBeforeRound - stake + winnings });
         setModal({ title: '小奖！', msg: `摇出两个相同图案！赢得 ${winnings} 金币！`, onConfirm: () => setModal(null) });
       } else {
         setModal({ title: '没中', msg: '再来一次，下次一定中！', onConfirm: () => setModal(null) });
@@ -178,7 +189,7 @@ export const CasinoScreen: React.FC<Props> = ({ player, setPlayer, onLeave }) =>
         {activeGame === 'slots' && (
           <div style={{ textAlign: 'center' }}>
             <h3 style={{ marginBottom: '15px' }}>海盗老虎机</h3>
-            <p style={{ color: '#ccc', marginBottom: '20px' }}>两连同花 x2 | 三连同花 x3 | 三骷髅 x21</p>
+            <p style={{ color: '#ccc', marginBottom: '20px' }}>两枚同花有赏，三枚同花中大奖，三枚骷髅开海盗秘库。</p>
 
             <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '30px', fontSize: '4rem', background: '#000', padding: '20px', borderRadius: '10px', border: '4px solid #555' }}>
               <div>{slotResult[0]}</div>

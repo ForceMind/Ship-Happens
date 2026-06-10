@@ -552,7 +552,7 @@ export const GAME_EVENTS: GameEvent[] = [
              return {
               player: { ...player, gold: player.gold - 100 },
               voyage,
-              message: '你们花了 100 金币，但发现他是个骗子，上了船就跑了。(第一版限定1个同类船员)'
+                message: '你们花了 100 金币，但发现他是个骗子，上了船就跑了。'
             };
           }
         }

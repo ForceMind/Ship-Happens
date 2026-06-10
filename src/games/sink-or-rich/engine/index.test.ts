@@ -1,13 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage, createDefaultPlayerState, settleArrival } from './index';
+import { calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage, createDefaultPlayerState, settleArrival, startVoyage } from './index';
 import { SHIPS, ARMORS, CARGO_TYPES, ROUTES } from '../content/data';
 import { getStoryStatus } from '../content/story';
+import { clampCasinoPayout } from '../content/casino';
 
 describe('Game Logic Tests', () => {
   it('should create default player state correctly', () => {
     const player = createDefaultPlayerState();
     expect(player.gold).toBe(1000);
     expect(player.currentShip).toBeNull();
+    expect(player.casinoProfitThisPort).toBe(0);
   });
 
   it('should calculate max hull correctly with armor', () => {
@@ -100,5 +102,24 @@ describe('Game Logic Tests', () => {
     delete (player as Partial<typeof player>).storyProgress;
 
     expect(getStoryStatus(player)?.title).toBe('主线：破产船长的序章');
+  });
+
+  it('should cap casino payout without exceeding the hidden session limit', () => {
+    expect(clampCasinoPayout(105000, 5000, 0)).toBe(18000);
+    expect(clampCasinoPayout(15000, 5000, 17000)).toBe(6000);
+    expect(clampCasinoPayout(1000, 100, 0)).toBe(1000);
+  });
+
+  it('should reset casino profit tracking when starting a voyage', () => {
+    const player = createDefaultPlayerState();
+    const ship = SHIPS.find(s => s.id === 'ship_fishing')!;
+    const route = ROUTES.find(r => r.id === 'route_coastal')!;
+
+    player.currentShip = ship;
+    player.currentHull = ship.maxHull;
+    player.casinoProfitThisPort = 18000;
+
+    const { player: sailingPlayer } = startVoyage(player, route, 'port_tortuga');
+    expect(sailingPlayer.casinoProfitThisPort).toBe(0);
   });
 });

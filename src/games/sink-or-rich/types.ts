@@ -151,6 +151,7 @@ export interface PlayerState {
   unlockedRoutes: string[];
   unlockedPorts: string[];
   marketMultiplier: number;
+  casinoProfitThisPort: number;
 }
 
 export type VoyageMode = 'sailing' | 'returning' | 'arrived' | 'sunk' | 'combat';

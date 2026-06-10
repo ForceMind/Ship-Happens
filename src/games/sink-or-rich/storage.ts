@@ -36,6 +36,9 @@ export function loadGame(): { player: PlayerState; voyage: VoyageState | null } 
       if (typeof player.marketMultiplier !== 'number') {
         player.marketMultiplier = 1.0;
       }
+      if (typeof player.casinoProfitThisPort !== 'number') {
+        player.casinoProfitThisPort = 0;
+      }
       if (typeof player.storyProgress !== 'number') {
         player.storyProgress = 0;
       }
