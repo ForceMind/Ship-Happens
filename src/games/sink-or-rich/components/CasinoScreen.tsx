@@ -142,6 +142,7 @@ export const CasinoScreen: React.FC<Props> = ({ player, setPlayer, onLeave }) =>
         {activeGame === 'roulette' && (
           <div style={{ textAlign: 'center' }}>
             <h3 style={{ marginBottom: '15px' }}>幸运大转盘</h3>
+            <p style={{ color: '#ccc', marginBottom: '20px' }}>选择红、黑、绿任意一种颜色，命中后获得押注的 3 倍返还。</p>
             <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginBottom: '20px' }}>
               {ROULETTE_OPTIONS.map(opt => (
                 <div
@@ -187,7 +188,7 @@ export const CasinoScreen: React.FC<Props> = ({ player, setPlayer, onLeave }) =>
         {activeGame === 'slots' && (
           <div style={{ textAlign: 'center' }}>
             <h3 style={{ marginBottom: '15px' }}>海盗老虎机</h3>
-            <p style={{ color: '#ccc', marginBottom: '20px' }}>每次拉杆都是随机开奖，剩下就看海风站在哪一边。</p>
+            <p style={{ color: '#ccc', marginBottom: '20px' }}>每次拉杆都是随机开奖：任意两枚相同返还 2 倍，三枚相同返还 3 倍，骷髅三连返还 21 倍。</p>
 
             <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '30px', fontSize: '4rem', background: '#000', padding: '20px', borderRadius: '10px', border: '4px solid #555' }}>
               <div>{slotResult[0]}</div>
