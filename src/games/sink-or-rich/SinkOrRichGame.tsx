@@ -12,6 +12,7 @@ import { SettlementScreen } from './components/SettlementScreen';
 import { GameOverScreen } from './components/GameOverScreen';
 import { CasinoScreen } from './components/CasinoScreen';
 import { StoryScreen } from './components/StoryScreen';
+import { VersionBadge } from './components/VersionBadge';
 import { canAdvanceStory } from './content/story';
 
 type AppScreen = 'title' | 'port' | 'route_select' | 'voyage' | 'combat' | 'settlement' | 'game_over' | 'casino';
@@ -262,6 +263,7 @@ export const SinkOrRichGame: React.FC = () => {
           }}
         />
       )}
+      <VersionBadge />
     </div>
   );
 };

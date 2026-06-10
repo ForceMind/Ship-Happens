@@ -1,5 +1,6 @@
 import { PlayerState, VoyageState } from './types';
 import { createDefaultPlayerState } from './engine';
+import { SHIPS } from './content/data';
 
 const STORAGE_KEY_PLAYER = 'sink_or_rich_player_v1';
 const STORAGE_KEY_VOYAGE = 'sink_or_rich_voyage_v1';
@@ -40,6 +41,15 @@ export function loadGame(): { player: PlayerState; voyage: VoyageState | null } 
       }
       if (player.storyBranch !== 'pirate' && player.storyBranch !== 'governor') {
         delete player.storyBranch;
+      }
+      if (player.currentShip) {
+        const canonicalShip = SHIPS.find(s => s.id === player.currentShip.id);
+        if (canonicalShip) {
+          player.currentShip = { ...player.currentShip, ...canonicalShip };
+        }
+        if (typeof player.currentHull !== 'number') {
+          player.currentHull = player.currentShip.maxHull;
+        }
       }
       if (player.cargo && player.cargo.length > 0) {
         player.cargo = player.cargo.map((c: any) => ({

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PlayerCargo, PlayerState } from '../types';
 import { SHIPS, CREW_MEMBERS, AMMO_TYPES, ARMORS, CARGO_TYPES, PORTS } from '../content/data';
 import { getStoryStatus } from '../content/story';
-import { calculateCargoUsed, calculateMaxHull, calculateRepairCost, canStartVoyage } from '../engine';
+import { calculateCargoUsed, calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage } from '../engine';
 import { Modal } from './Modal';
 import styles from './styles.module.css';
 
@@ -242,12 +242,20 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
       setPlayer({ ...player, gold: player.gold - repairCost, currentHull: maxHull });
     } else if (player.gold > 0 && repairCost > 0) {
       // Partial repair
-      const affordableHull = Math.floor(player.gold / player.currentShip!.repairCostPerHull);
+      const repairUnitCost = calculateRepairUnitCost(player);
+      const missingHull = Math.max(0, maxHull - player.currentHull);
+      const affordableHull = Math.min(missingHull, Math.floor(player.gold / repairUnitCost));
       if (affordableHull > 0) {
         setPlayer({
           ...player,
-          gold: player.gold - (affordableHull * player.currentShip!.repairCostPerHull),
+          gold: player.gold - (affordableHull * repairUnitCost),
           currentHull: player.currentHull + affordableHull
+        });
+      } else {
+        setModal({
+          title: '维修费不足',
+          msg: `至少需要 ${repairUnitCost} 金币才能修复 1 点耐久。`,
+          onConfirm: () => setModal(null)
         });
       }
     }

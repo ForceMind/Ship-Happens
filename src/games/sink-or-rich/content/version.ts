@@ -1,0 +1,1 @@
+export const GAME_VERSION = '3.0.1';

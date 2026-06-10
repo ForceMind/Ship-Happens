@@ -1,6 +1,6 @@
 import { PlayerState, VoyageState, Route, Enemy, CombatState, Ship, Armor, VoyageMode } from '../types';
 import { GAME_EVENTS } from '../content/events';
-import { ENEMIES, CARGO_TYPES } from '../content/data';
+import { ENEMIES, CARGO_TYPES, SHIPS } from '../content/data';
 
 export function createDefaultPlayerState(): PlayerState {
   return {
@@ -30,12 +30,30 @@ export function createDefaultPlayerState(): PlayerState {
 }
 
 export function calculateMaxHull(ship: Ship | null, armor: Armor[]): number {
-  if (!ship) return 0;
-  let maxHull = ship.maxHull;
+  const shipDefinition = getShipDefinition(ship);
+  if (!shipDefinition) return 0;
+  let maxHull = shipDefinition.maxHull;
   if (armor.some(a => a.id === 'armor_wood')) {
     maxHull += 20;
   }
   return maxHull;
+}
+
+export function getShipDefinition(ship: Ship | null): Ship | null {
+  if (!ship) return null;
+  const canonicalShip = SHIPS.find(s => s.id === ship.id);
+  return canonicalShip ? { ...ship, ...canonicalShip } : ship;
+}
+
+export function calculateRepairUnitCost(player: PlayerState): number {
+  const shipDefinition = getShipDefinition(player.currentShip);
+  if (!shipDefinition) return 0;
+
+  let cost = shipDefinition.repairCostPerHull;
+  if (player.bounty > 80) cost *= 1.4;
+  else if (player.bounty > 50) cost *= 1.2;
+
+  return Math.max(1, Math.ceil(cost));
 }
 
 export function calculateCargoUsed(player: PlayerState, voyage?: VoyageState): number {
@@ -50,10 +68,14 @@ export function calculateCargoUsed(player: PlayerState, voyage?: VoyageState): n
 export function calculateRepairCost(player: PlayerState): number {
   if (!player.currentShip) return 0;
   const maxHull = calculateMaxHull(player.currentShip, player.ownedArmor);
-  const missingHull = maxHull - player.currentHull;
+  const currentHull = Number.isFinite(player.currentHull) ? player.currentHull : 0;
+  const missingHull = maxHull - currentHull;
   if (missingHull <= 0) return 0;
 
-  let cost = missingHull * player.currentShip.repairCostPerHull;
+  const shipDefinition = getShipDefinition(player.currentShip);
+  if (!shipDefinition) return 0;
+
+  let cost = missingHull * shipDefinition.repairCostPerHull;
   if (player.bounty > 80) cost *= 1.4;
   else if (player.bounty > 50) cost *= 1.2;
 
@@ -63,7 +85,8 @@ export function calculateRepairCost(player: PlayerState): number {
 export function canStartVoyage(player: PlayerState): boolean {
   if (!player.currentShip) return false;
   const maxHull = calculateMaxHull(player.currentShip, player.ownedArmor);
-  if (player.currentHull < maxHull * 0.3) return false;
+  const currentHull = Number.isFinite(player.currentHull) ? player.currentHull : 0;
+  if (currentHull < maxHull * 0.3) return false;
   return true;
 }
 

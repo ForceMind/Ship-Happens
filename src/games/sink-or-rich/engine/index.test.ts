@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateMaxHull, calculateRepairCost, canStartVoyage, createDefaultPlayerState, settleArrival } from './index';
+import { calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage, createDefaultPlayerState, settleArrival } from './index';
 import { SHIPS, ARMORS, CARGO_TYPES, ROUTES } from '../content/data';
 import { getStoryStatus } from '../content/story';
 
@@ -24,6 +24,16 @@ describe('Game Logic Tests', () => {
     player.currentHull = 50; // max is 80, missing 30
 
     expect(calculateRepairCost(player)).toBe(60); // 30 * 2
+  });
+
+  it('should calculate repair cost from canonical ship data for legacy ship snapshots', () => {
+    const player = createDefaultPlayerState();
+    player.currentShip = { id: 'ship_junk', name: '东方大福船' } as typeof player.currentShip;
+    player.currentHull = 100;
+
+    expect(calculateMaxHull(player.currentShip, [])).toBe(180);
+    expect(calculateRepairCost(player)).toBe(400);
+    expect(calculateRepairUnitCost(player)).toBe(5);
   });
 
   it('should check if voyage can start', () => {
