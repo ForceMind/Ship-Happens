@@ -30,6 +30,7 @@ export const VoyageScreen: React.FC<Props> = ({ player, voyage, onShipMove, onRe
         <div className={styles.statItem}><span className={styles.statLabel}>临时冒险收入</span><span className={styles.statValue}>💰{voyage.temporaryGold}</span></div>
         <div className={styles.statItem}><span className={styles.statLabel}>携带货物</span><span className={styles.statValue}>📦{totalCargoCount}</span></div>
         <div className={styles.statItem}><span className={styles.statLabel}>炮弹</span><span className={styles.statValue}>💣{player.ownedAmmo['ammo_normal'] || 0}</span></div>
+        <div className={styles.statItem}><span className={styles.statLabel}>航速</span><span className={styles.statValue}>{player.currentShip?.speed ?? '-'}</span></div>
       </div>
 
       <div className={styles.healthBarContainer}>

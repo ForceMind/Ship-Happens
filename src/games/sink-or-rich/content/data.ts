@@ -130,7 +130,7 @@ export const SHIPS: Ship[] = [
     maxHull: 80,
     cargoSlots: 4,
     cannonSlots: 1,
-    speed: 4,
+    speed: 2,
     repairCostPerHull: 2,
     description: '便宜灵活，适合新手试水。',
     availableInPorts: ['port_royal', 'port_tortuga', 'port_nassau', 'port_cartagena', 'port_oriental', 'port_azores', 'port_madagascar']
@@ -142,7 +142,7 @@ export const SHIPS: Ship[] = [
     maxHull: 140,
     cargoSlots: 10,
     cannonSlots: 1,
-    speed: 3,
+    speed: 2.4,
     repairCostPerHull: 4,
     description: '舱位大，适合正经贸易。',
     availableInPorts: ['port_royal', 'port_cartagena', 'port_oriental', 'port_azores']
@@ -166,7 +166,7 @@ export const SHIPS: Ship[] = [
     maxHull: 240,
     cargoSlots: 8,
     cannonSlots: 2,
-    speed: 2,
+    speed: 1.4,
     repairCostPerHull: 8,
     description: '很耐打，但维修昂贵。',
     availableInPorts: ['port_royal', 'port_cartagena', 'port_azores']
@@ -178,7 +178,7 @@ export const SHIPS: Ship[] = [
     maxHull: 180,
     cargoSlots: 15,
     cannonSlots: 0,
-    speed: 4,
+    speed: 3.8,
     repairCostPerHull: 5,
     description: '东方特有的多桅帆船。货舱极大且航速优异，但完全没有武装能力。',
     availableInPorts: ['port_oriental', 'port_madagascar']
@@ -190,7 +190,7 @@ export const SHIPS: Ship[] = [
     maxHull: 999,
     cargoSlots: 20,
     cannonSlots: 5,
-    speed: 5,
+    speed: 4.6,
     repairCostPerHull: 20,
     description: '象征着四海之王的终极战舰，足以去深渊挑战传说中的海妖。',
     availableInPorts: ['port_tortuga', 'port_madagascar']

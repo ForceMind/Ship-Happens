@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage, createDefaultPlayerState, settleArrival, startVoyage } from './index';
+import { calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage, createDefaultPlayerState, moveShip, settleArrival, startVoyage } from './index';
 import { SHIPS, ARMORS, CARGO_TYPES, ROUTES, PORTS } from '../content/data';
 import { getStoryStatus } from '../content/story';
 import { clampCasinoPayout } from '../content/casino';
@@ -50,6 +50,41 @@ describe('Game Logic Tests', () => {
 
     player.currentHull = 30; // 30 >= 24
     expect(canStartVoyage(player)).toBe(true);
+  });
+
+  it('should move ships at visibly different map speeds', () => {
+    const route = ROUTES.find(r => r.id === 'route_coastal')!;
+    const basePlayer = createDefaultPlayerState();
+    const baseVoyage = {
+      route,
+      destinationPortId: 'port_tortuga',
+      position: 0,
+      totalNodes: route.totalNodes,
+      mapWidth: 800,
+      mapHeight: 2600,
+      playerPosition: { x: 100, y: 1000 },
+      distanceTraveled: 0,
+      entities: [],
+      mode: 'sailing' as const,
+      temporaryGold: 0,
+      lootCargo: [],
+      eventsResolved: 0,
+      enemiesDefeated: 0,
+      monstersDefeated: 0,
+      log: [],
+      combatState: null,
+      currentEvent: null,
+    };
+    const fishing = SHIPS.find(s => s.id === 'ship_fishing')!;
+    const junk = SHIPS.find(s => s.id === 'ship_junk')!;
+    const heavy = SHIPS.find(s => s.id === 'ship_heavy')!;
+
+    const fishingMove = moveShip({ ...basePlayer, currentShip: fishing, currentHull: fishing.maxHull }, baseVoyage, 1, 0).voyage.playerPosition.x - baseVoyage.playerPosition.x;
+    const junkMove = moveShip({ ...basePlayer, currentShip: junk, currentHull: junk.maxHull }, baseVoyage, 1, 0).voyage.playerPosition.x - baseVoyage.playerPosition.x;
+    const heavyMove = moveShip({ ...basePlayer, currentShip: heavy, currentHull: heavy.maxHull }, baseVoyage, 1, 0).voyage.playerPosition.x - baseVoyage.playerPosition.x;
+
+    expect(junkMove).toBeGreaterThan(fishingMove);
+    expect(fishingMove).toBeGreaterThan(heavyMove);
   });
 
   it('should keep carried cargo and add loot after successful arrival', () => {

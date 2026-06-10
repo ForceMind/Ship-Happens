@@ -454,7 +454,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                   <div>
                     <div className={styles.itemName}>{s.name} {isOwned && <span style={{color: '#4caf50'}}>(当前座驾)</span>}</div>
                     <div className={styles.itemDesc}>{s.description}</div>
-                    <div className={styles.itemDesc}>耐久:{s.maxHull} 舱位:{s.cargoSlots} 炮位:{s.cannonSlots}</div>
+                    <div className={styles.itemDesc}>耐久:{s.maxHull} 舱位:{s.cargoSlots} 炮位:{s.cannonSlots} 航速:{s.speed}</div>
                     <div className={styles.itemPrice}>💰 {s.price}</div>
                   </div>
                   {isOwned ? (
@@ -697,7 +697,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         {activeTab === 'bank' && (
           <div>
             <h3 style={{ color: '#f6d365' }}>大洋银行</h3>
-            <p style={{ marginBottom: '10px' }}>用明天的钱，圆今天的梦！(按出海节点计算复利)</p>
+            <p style={{ marginBottom: '10px' }}>借款会在每次航行结束时结算利息，航线越长利息越高。返航或沉船也会产生利息。</p>
             <div className={styles.statItem} style={{ marginBottom: '15px' }}>
               <span className={styles.statLabel}>当前债务</span>
               <span className={styles.statValue} style={{color: player.debt > 0 ? '#f44336' : '#fff'}}>💰 {player.debt}</span>
