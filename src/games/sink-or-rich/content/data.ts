@@ -127,19 +127,19 @@ export const ARMORS: Armor[] = [
 ];
 
 export const CARGO_TYPES: Cargo[] = [
-  { id: 'cargo_wood', name: '木材', buyPrice: 30, sellPrice: 45, slots: 1, riskTag: 'low' },
-  { id: 'cargo_spice', name: '香料', buyPrice: 80, sellPrice: 130, slots: 1, riskTag: 'medium' },
-  { id: 'cargo_silk', name: '丝绸', buyPrice: 120, sellPrice: 210, slots: 1, riskTag: 'high' },
-  { id: 'cargo_jewelry', name: '珠宝', buyPrice: 300, sellPrice: 600, slots: 1, riskTag: 'extreme' },
-  { id: 'cargo_weapons', name: '军火', buyPrice: 200, sellPrice: 400, slots: 1, riskTag: 'illegal', description: '提高遇到巡逻队检查的风险' },
-  { id: 'cargo_contraband', name: '违禁品', buyPrice: 150, sellPrice: 450, slots: 1, riskTag: 'illegal', description: '被巡逻队检查时会罚款或没收' },
+  { id: 'cargo_wood', name: '木材', buyPrice: 30, sellPrice: 45, slots: 1, riskTag: 'low', requiredReputation: 0 },
+  { id: 'cargo_spice', name: '香料', buyPrice: 80, sellPrice: 130, slots: 1, riskTag: 'medium', requiredReputation: 10 },
+  { id: 'cargo_silk', name: '丝绸', buyPrice: 120, sellPrice: 210, slots: 1, riskTag: 'high', requiredReputation: 30 },
+  { id: 'cargo_jewelry', name: '珠宝', buyPrice: 300, sellPrice: 600, slots: 1, riskTag: 'extreme', requiredReputation: 80 },
+  { id: 'cargo_weapons', name: '军火', buyPrice: 200, sellPrice: 400, slots: 1, riskTag: 'illegal', description: '提高遇到巡逻队检查的风险', requiredReputation: 150 },
+  { id: 'cargo_contraband', name: '违禁品', buyPrice: 150, sellPrice: 450, slots: 1, riskTag: 'illegal', description: '被巡逻队检查时会罚款或没收', requiredReputation: 200 },
 ];
 
 export const CONTRACTS: Contract[] = [
-  { id: 'contract_spice', name: '商会香料订单', requiredCargoName: '香料', requiredAmount: 3, reward: 450, penalty: 150 },
-  { id: 'contract_silk', name: '贵族丝绸订单', requiredCargoName: '丝绸', requiredAmount: 3, reward: 750, penalty: 250 },
-  { id: 'contract_jewelry', name: '珠宝密运', requiredCargoName: '珠宝', requiredAmount: 2, reward: 1200, penalty: 500 },
-  { id: 'contract_contraband', name: '黑市违禁品', requiredCargoName: '违禁品', requiredAmount: 3, reward: 1100, penalty: 450 },
+  { id: 'contract_spice', name: '商会香料订单', requiredCargoName: '香料', requiredAmount: 3, reward: 450, penalty: 150, requiredReputation: 10 },
+  { id: 'contract_silk', name: '贵族丝绸订单', requiredCargoName: '丝绸', requiredAmount: 3, reward: 750, penalty: 250, requiredReputation: 30 },
+  { id: 'contract_jewelry', name: '珠宝密运', requiredCargoName: '珠宝', requiredAmount: 2, reward: 1200, penalty: 500, requiredReputation: 80 },
+  { id: 'contract_contraband', name: '黑市违禁品', requiredCargoName: '违禁品', requiredAmount: 3, reward: 1100, penalty: 450, requiredReputation: 200 },
 ];
 
 export const ROUTES: Route[] = [
@@ -156,5 +156,6 @@ export const ENEMIES: Enemy[] = [
   { id: 'enemy_monster_1', name: '巨型章鱼', maxHp: 90, attack: 16, rewardGold: 300, type: 'monster', description: '潜伏在深海的恐怖巨兽' },
   { id: 'enemy_monster_2', name: '幽灵船', maxHp: 100, attack: 18, rewardGold: 360, type: 'monster', description: '传说中永远在海上漂泊的亡灵船' },
   { id: 'enemy_patrol_1', name: '海军巡防舰', maxHp: 120, attack: 20, rewardGold: 0, type: 'patrol', description: '代表王室维持治安的军舰，击沉会遭到通缉' },
+  { id: 'enemy_debt_collector', name: '铁血讨债团', maxHp: 300, attack: 35, rewardGold: 0, type: 'patrol', description: '银行派来的冷血雇佣兵，欠债还钱天经地义！' },
   { id: 'enemy_leviathan', name: '海妖之母·利维坦', maxHp: 1500, attack: 80, rewardGold: 100000, type: 'monster', description: '【最终BOSS】海洋的真正霸主，深渊航线的主宰！' }
 ];

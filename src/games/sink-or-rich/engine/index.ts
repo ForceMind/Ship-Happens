@@ -21,6 +21,7 @@ export function createDefaultPlayerState(): PlayerState {
     cargo: [],
     activeContract: null,
     rescuedByGuild: false,
+    debt: 0,
   };
 }
 
@@ -90,6 +91,7 @@ export function startVoyage(player: PlayerState, route: Route, destinationPortId
     if (event.id === 'event_blockade') type = 'patrol';
     if (event.id === 'event_whirlpool') type = 'reef';
     if (event.id === 'event_leviathan') type = 'monster';
+    if (event.id === 'event_debt_collector') type = 'patrol';
 
     generatedEntities.push({
       id: `entity_${i}_${Date.now()}`,
@@ -113,6 +115,23 @@ export function startVoyage(player: PlayerState, route: Route, destinationPortId
       eventId: 'event_leviathan',
       resolved: false
     });
+  }
+
+  // Force spawn Debt Collector if debt is too high (> 20000)
+  if (player.debt > 20000) {
+    // Spawn 1-2 debt collectors
+    const collectorCount = Math.floor(Math.random() * 2) + 1;
+    for (let c = 0; c < collectorCount; c++) {
+      generatedEntities.push({
+        id: `entity_collector_${Date.now()}_${c}`,
+        type: 'patrol',
+        x: Math.floor(Math.random() * (mapWidth - 100)) + 50,
+        y: Math.floor(Math.random() * (mapHeight - 800)) + 300,
+        radius: 60,
+        eventId: 'event_debt_collector',
+        resolved: false
+      });
+    }
   }
 
   return {
@@ -435,10 +454,12 @@ export function settleArrival(player: PlayerState, voyage: VoyageState): { playe
     const requiredCount = allCargo.filter(c => c.name === p.activeContract!.requiredCargoName).length;
     if (requiredCount >= p.activeContract.requiredAmount) {
       contractIncome = p.activeContract.reward;
-      msg.push(`合同完成 (${p.activeContract.name}): +${contractIncome} 金币`);
+      p.reputation += 10;
+      msg.push(`合同完成 (${p.activeContract.name}): +${contractIncome} 金币, +10 声望`);
     } else {
       contractPenalty = p.activeContract.penalty;
-      msg.push(`合同违约 (${p.activeContract.name}): -${contractPenalty} 金币`);
+      p.reputation -= 5;
+      msg.push(`合同违约 (${p.activeContract.name}): -${contractPenalty} 金币, -5 声望`);
     }
   }
   p.gold += contractIncome - contractPenalty;
@@ -447,7 +468,19 @@ export function settleArrival(player: PlayerState, voyage: VoyageState): { playe
   p.gold += voyage.temporaryGold;
   msg.push(`海上冒险收入: +${voyage.temporaryGold} 金币`);
 
-  msg.push(`当前通缉值: ${p.bounty}, 声望: ${p.reputation}`);
+  // Route reputation
+  const routeRep = voyage.route ? voyage.route.totalNodes : 5;
+  p.reputation += routeRep;
+  msg.push(`航行成功奖励: +${routeRep} 声望`);
+
+  // Debt interest
+  if (p.debt > 0) {
+    const interest = Math.floor(p.debt * (voyage.route ? voyage.route.totalNodes * 0.01 : 0.05));
+    p.debt += interest;
+    msg.push(`银行利息结算: 债务增加 ${interest} 金币`);
+  }
+
+  msg.push(`当前通缉值: ${p.bounty}, 声望: ${p.reputation}, 债务: ${p.debt}`);
   
   p.cargo = [];
   p.activeContract = null;
@@ -473,13 +506,23 @@ export function settleReturn(player: PlayerState, voyage: VoyageState): { player
   let contractPenalty = 0;
   if (p.activeContract) {
     contractPenalty = p.activeContract.penalty;
-    msg.push(`合同违约 (${p.activeContract.name}): -${contractPenalty} 金币`);
+    p.reputation -= 5;
+    msg.push(`合同违约 (${p.activeContract.name}): -${contractPenalty} 金币, -5 声望`);
   }
   p.gold -= contractPenalty;
 
   let adventureIncome = Math.floor(voyage.temporaryGold * 0.7);
   p.gold += adventureIncome;
   msg.push(`带回冒险收入 (70%): +${adventureIncome} 金币`);
+
+  // Debt interest
+  if (p.debt > 0) {
+    const interest = Math.floor(p.debt * (voyage.route ? Math.max(1, voyage.route.totalNodes * 0.005) : 0.02));
+    p.debt += interest;
+    msg.push(`银行利息结算(返航折扣): 债务增加 ${interest} 金币`);
+  }
+
+  msg.push(`当前通缉值: ${p.bounty}, 声望: ${p.reputation}, 债务: ${p.debt}`);
 
   p.cargo = [];
   p.activeContract = null;
@@ -494,8 +537,23 @@ export function settleSinking(player: PlayerState): { player: PlayerState, resul
   p.ownedCrew = [];
   p.ownedAmmo = {};
   p.ownedArmor = [];
+  let msg = ['船沉了。货物、炮弹、船员和这一趟的发财梦，全都留在海底了。'];
+  
+  if (p.activeContract) {
+    p.gold = Math.max(0, p.gold - p.activeContract.penalty);
+    p.reputation -= 10;
+    msg.push(`合同违约: -${p.activeContract.penalty} 金币, -10 声望`);
+  }
+
+  // Debt interest
+  if (p.debt > 0) {
+    const interest = Math.floor(p.debt * 0.05); // 5% flat penalty for sinking
+    p.debt += interest;
+    msg.push(`银行利息结算(沉船惩罚): 债务增加 ${interest} 金币`);
+  }
+
   p.cargo = [];
   p.activeContract = null;
   p.sinkCount += 1;
-  return { player: p, resultMsg: ['船沉了。货物、炮弹、船员和这一趟的发财梦，全都留在海底了。'] };
+  return { player: p, resultMsg: msg };
 }

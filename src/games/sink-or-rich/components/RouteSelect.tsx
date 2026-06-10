@@ -20,7 +20,7 @@ export const RouteSelect: React.FC<Props> = ({ currentPortId, onSelectRoute, onC
         <span style={{ fontSize: '1.2rem' }}>目的港：</span>
         <select 
           className={styles.btnSecondary} 
-          style={{ padding: '10px', fontSize: '1.2rem', minWidth: '150px' }}
+          style={{ padding: '10px', fontSize: '1.2rem', minWidth: '150px', backgroundColor: '#333', color: '#fff' }}
           value={selectedPortId}
           onChange={e => setSelectedPortId(e.target.value)}
         >

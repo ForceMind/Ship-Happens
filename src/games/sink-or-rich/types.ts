@@ -43,6 +43,7 @@ export interface Cargo {
   slots: number;
   riskTag: RiskTag;
   description?: string;
+  requiredReputation?: number;
 }
 
 export interface Contract {
@@ -53,6 +54,7 @@ export interface Contract {
   reward: number;
   penalty: number;
   description?: string;
+  requiredReputation?: number;
 }
 
 export interface Route {
@@ -130,6 +132,7 @@ export interface PlayerState {
   cargo: Cargo[];
   activeContract: Contract | null;
   rescuedByGuild: boolean; // used for the 300 gold rescue
+  debt: number;
 }
 
 export type VoyageMode = 'sailing' | 'returning' | 'arrived' | 'sunk' | 'combat';

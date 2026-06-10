@@ -57,7 +57,7 @@ export const CombatScreen: React.FC<Props> = ({ player, voyage, onCombatAction }
 
       <div className={styles.grid} style={{ marginTop: '20px' }}>
         <button className={styles.btnPrimary} style={{ background: '#f44336', color: '#fff' }} disabled={!hasNormalAmmo} onClick={() => onCombatAction('attack_normal')}>
-          普通炮击 (15 dmg)
+          普通炮击 (15 伤害)
         </button>
         <button className={styles.btnPrimary} style={{ background: '#ff9800', color: '#fff' }} disabled={!hasChainAmmo} onClick={() => onCombatAction('attack_chain')}>
           链弹炮击 (降攻)

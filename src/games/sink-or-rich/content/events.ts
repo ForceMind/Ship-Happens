@@ -936,5 +936,31 @@ export const GAME_EVENTS: GameEvent[] = [
         }
       }
     ]
+  },
+  {
+    id: 'event_debt_collector',
+    name: '铁血讨债团',
+    description: '“欠债还钱，天经地义！哪怕追到天涯海角，也要让你连本带利吐出来！”——一艘挂着大洋银行旗帜的重型战舰拦住了你的去路。',
+    options: [
+      {
+        id: 'collector_fight',
+        label: '要钱没有，要命一条！',
+        resolve: (player, voyage) => {
+          return { player, voyage, message: '你选择武力抗拒催收！', combatEnemyId: 'enemy_debt_collector' };
+        }
+      },
+      {
+        id: 'collector_pay',
+        label: '破财消灾 (扣除所有金币抵债)',
+        resolve: (player, voyage) => {
+          const paid = player.gold;
+          return { 
+            player: { ...player, gold: 0, debt: Math.max(0, player.debt - paid) }, 
+            voyage, 
+            message: `讨债团强行拿走了你身上所有的 ${paid} 金币用来抵债！` 
+          };
+        }
+      }
+    ]
   }
 ];

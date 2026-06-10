@@ -9,10 +9,11 @@ interface Props {
   setPlayer: (p: PlayerState) => void;
   onGoToRouteSelect: () => void;
   onRetireVictory: () => void;
+  onBankrupt: () => void;
 }
 
-export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSelect, onRetireVictory }) => {
-  const [activeTab, setActiveTab] = useState<'ship'|'crew'|'ammo'|'armor'|'cargo'|'contract'|'repair'>('ship');
+export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSelect, onRetireVictory, onBankrupt }) => {
+  const [activeTab, setActiveTab] = useState<'ship'|'crew'|'ammo'|'armor'|'cargo'|'contract'|'repair'|'bank'>('ship');
 
   const currentPort = PORTS.find(p => p.id === (player.currentPortId || 'port_royal')) || PORTS[0];
 
@@ -99,6 +100,22 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
     setPlayer({ ...player, gold: player.gold + 300, rescuedByGuild: true });
   };
 
+  const creditLimit = 2000 + player.reputation * 100;
+  
+  const doBorrow = () => {
+    if (player.debt < creditLimit) {
+      const amount = Math.min(1000, creditLimit - player.debt);
+      setPlayer({ ...player, gold: player.gold + amount, debt: player.debt + amount });
+    }
+  };
+
+  const doRepay = () => {
+    if (player.debt > 0 && player.gold > 0) {
+      const amount = Math.min(player.gold, player.debt, 1000);
+      setPlayer({ ...player, gold: player.gold - amount, debt: player.debt - amount });
+    }
+  };
+
   return (
     <div className={styles.container} style={{ backgroundColor: currentPort.colorTheme, transition: 'background-color 1s ease' }}>
       <h2 style={{ textAlign: 'center', marginBottom: '5px' }}>{currentPort.name}</h2>
@@ -110,6 +127,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         <div className={styles.statItem}><span className={styles.statLabel}>耐久</span><span className={styles.statValue}>{player.currentHull}/{maxHull}</span></div>
         <div className={styles.statItem}><span className={styles.statLabel}>舱位</span><span className={styles.statValue}>{cargoUsed}/{cargoTotal}</span></div>
         <div className={styles.statItem}><span className={styles.statLabel}>通缉/声望</span><span className={styles.statValue}>☠️{player.bounty} / 🌟{player.reputation}</span></div>
+        <div className={styles.statItem}><span className={styles.statLabel}>债务</span><span className={styles.statValue} style={{color: player.debt > 0 ? '#f44336' : '#fff'}}>💰{player.debt}</span></div>
       </div>
 
       {player.gold >= 50000 && (
@@ -125,10 +143,21 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
       {!player.currentShip && player.gold < 300 && (
         <div className={styles.card} style={{ borderColor: 'red' }}>
           <p>看起来你已经破产并且连最便宜的船都买不起了。</p>
-          <button className={styles.btnPrimary} onClick={doRescue} disabled={player.rescuedByGuild}>
-            商会救济 (+300金币) {player.rescuedByGuild ? '(已使用)' : ''}
-          </button>
-          <p className={styles.statLabel}>防死档机制：每局只能使用一次</p>
+          {!player.rescuedByGuild ? (
+            <>
+              <button className={styles.btnPrimary} onClick={doRescue}>
+                商会救济 (+300金币)
+              </button>
+              <p className={styles.statLabel}>防死档机制：每局只能使用一次</p>
+            </>
+          ) : (
+            <>
+              <button className={styles.btnPrimary} style={{ backgroundColor: '#8B0000' }} onClick={onBankrupt}>
+                彻底破产 (结束游戏)
+              </button>
+              <p className={styles.statLabel}>你浪费了商会的救济金，现在真的无路可走了。</p>
+            </>
+          )}
         </div>
       )}
 
@@ -140,6 +169,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         <button className={activeTab === 'cargo' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('cargo')}>货物</button>
         <button className={activeTab === 'contract' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('contract')}>合同</button>
         <button className={activeTab === 'repair' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('repair')}>维修</button>
+        <button className={activeTab === 'bank' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('bank')}>银行</button>
       </div>
 
       <div className={styles.card}>
@@ -222,15 +252,17 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
             {CARGO_TYPES.map(c => {
               const buyPrice = getCargoBuyPrice(c.id, c.buyPrice);
               const sellPrice = getCargoSellPrice(c.id, c.sellPrice);
+              const locked = player.reputation < (c.requiredReputation || 0);
               return (
                 <div key={c.id} className={styles.itemCard}>
                   <div>
-                    <div className={styles.itemName}>{c.name} {c.riskTag === 'illegal' && '☠️'}</div>
+                    <div className={styles.itemName}>{c.name} {c.riskTag === 'illegal' && '☠️'} {locked && '🔒'}</div>
                     <div className={styles.itemDesc}>进价: {buyPrice} | 售价: {sellPrice}</div>
                     {c.description && <div className={styles.itemDesc} style={{ color: '#f44336' }}>{c.description}</div>}
+                    {locked && <div className={styles.itemDesc} style={{ color: '#f44336' }}>需声望: {c.requiredReputation}</div>}
                     <div className={styles.itemPrice}>💰 {buyPrice}</div>
                   </div>
-                  <button className={styles.btnPrimary} style={{ margin: 0 }} disabled={player.gold < buyPrice || cargoUsed + c.slots > cargoTotal} onClick={() => buyCargo(c.id)}>
+                  <button className={styles.btnPrimary} style={{ margin: 0 }} disabled={locked || player.gold < buyPrice || cargoUsed + c.slots > cargoTotal} onClick={() => buyCargo(c.id)}>
                     买入
                   </button>
                 </div>
@@ -250,16 +282,20 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
               </div>
             ) : (
               <div className={styles.grid}>
-                {CONTRACTS.map(c => (
-                  <div key={c.id} className={styles.itemCard}>
-                    <div>
-                      <div className={styles.itemName}>{c.name}</div>
-                      <div className={styles.itemDesc}>要求: {c.requiredCargoName} x{c.requiredAmount}</div>
-                      <div className={styles.itemDesc}>奖励: {c.reward} | 违约: {c.penalty}</div>
+                {CONTRACTS.map(c => {
+                  const locked = player.reputation < (c.requiredReputation || 0);
+                  return (
+                    <div key={c.id} className={styles.itemCard}>
+                      <div>
+                        <div className={styles.itemName}>{c.name} {locked && '🔒'}</div>
+                        <div className={styles.itemDesc}>要求: {c.requiredCargoName} x{c.requiredAmount}</div>
+                        <div className={styles.itemDesc}>奖励: {c.reward} | 违约: {c.penalty}</div>
+                        {locked && <div className={styles.itemDesc} style={{ color: '#f44336' }}>需声望: {c.requiredReputation}</div>}
+                      </div>
+                      <button className={styles.btnPrimary} style={{ margin: 0 }} disabled={locked} onClick={() => takeContract(c.id)}>接取</button>
                     </div>
-                    <button className={styles.btnPrimary} style={{ margin: 0 }} onClick={() => takeContract(c.id)}>接取</button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -282,6 +318,31 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
             {!canSail && player.currentShip && (
               <p style={{ color: '#f44336' }}>船况太差，至少维修到 30% 才能出海！</p>
             )}
+          </div>
+        )}
+
+        {activeTab === 'bank' && (
+          <div>
+            <h3 style={{ color: '#f6d365' }}>大洋银行</h3>
+            <p style={{ marginBottom: '10px' }}>用明天的钱，圆今天的梦！(按出海节点计算复利)</p>
+            <div className={styles.statItem} style={{ marginBottom: '15px' }}>
+              <span className={styles.statLabel}>当前债务</span>
+              <span className={styles.statValue} style={{color: player.debt > 0 ? '#f44336' : '#fff'}}>💰 {player.debt}</span>
+            </div>
+            <div className={styles.statItem} style={{ marginBottom: '15px' }}>
+              <span className={styles.statLabel}>信用额度</span>
+              <span className={styles.statValue}>💰 {creditLimit} (基于声望)</span>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className={styles.btnPrimary} disabled={player.debt >= creditLimit} onClick={doBorrow}>
+                借款 +1000
+              </button>
+              <button className={styles.btnSecondary} disabled={player.debt <= 0 || player.gold <= 0} onClick={doRepay}>
+                还款 -1000
+              </button>
+            </div>
+            {player.debt > 20000 && <p style={{ color: '#f44336', marginTop: '10px' }}>⚠️ 警告：您的债务已超标，讨债佣兵可能在海上拦截您！</p>}
           </div>
         )}
       </div>

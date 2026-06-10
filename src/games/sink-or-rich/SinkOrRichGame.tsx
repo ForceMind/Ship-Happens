@@ -49,7 +49,7 @@ export const SinkOrRichGame: React.FC = () => {
       }
     } else {
       // Check bankruptcy on load
-      if (player.currentShip === null && player.gold < 300) {
+      if (player.currentShip === null && player.gold < 300 && player.rescuedByGuild) {
         setScreen('game_over');
       } else {
         setScreen('port');
@@ -154,7 +154,7 @@ export const SinkOrRichGame: React.FC = () => {
   };
 
   const handleFinishSettlement = () => {
-    if (settlementMode === 'sunk' && player.currentShip === null && player.gold < 300) {
+    if (settlementMode === 'sunk' && player.currentShip === null && player.gold < 300 && player.rescuedByGuild) {
       setScreen('game_over');
     } else {
       setScreen('port');
@@ -178,6 +178,7 @@ export const SinkOrRichGame: React.FC = () => {
           setPlayer={setPlayer} 
           onGoToRouteSelect={() => setScreen('route_select')} 
           onRetireVictory={() => setScreen('game_over')}
+          onBankrupt={() => setScreen('game_over')}
         />
       )}
       {screen === 'route_select' && (
