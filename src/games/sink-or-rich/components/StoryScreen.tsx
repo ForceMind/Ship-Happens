@@ -22,18 +22,18 @@ export const StoryScreen: React.FC<Props> = ({ player, onComplete }) => {
   } else if (player.storyProgress === 2) {
     if (player.bounty >= 100 && player.reputation >= 100) {
       title = '第二章：命运的抉择';
-      content = '你的名声和恶名都达到了顶峰！帝国海军和海盗工会都派人送来了密信。帝国希望你接受招安，成为私掠船长最终升任总督；而海盗们则尊称你为王，希望你带领他们抗击帝国。';
+      content = '你的名声和恶名都达到了顶峰！帝国海军和海盗公会都派人送来了密信。帝国希望你接下女王远东敕令，成为私掠船长并最终升任总督；海盗们则把半张藏宝图交给你，等你找到海盗王遗藏后带领他们抗击帝国。';
       options = [
         { text: '接受招安，成为帝国总督！(走白道)', onClick: () => onComplete(3, 'governor') },
         { text: '去他妈的帝国，老子要当海盗王！(走黑道)', onClick: () => onComplete(3, 'pirate') }
       ];
     } else if (player.bounty >= 100) {
       title = '第二章：黑色通缉令';
-      content = '你已经被帝国列为头号通缉犯，但海盗们却视你为英雄。海盗工会的使者单膝跪地，向你献上海盗王冠的碎片。';
+      content = '你已经被帝国列为头号通缉犯，但海盗们却视你为英雄。海盗公会的使者单膝跪地，向你献上海盗王冠的碎片，并告诉你真正的王冠还藏在传说航线尽头。';
       options = [{ text: '戴上它，我就是海盗王！', onClick: () => onComplete(3, 'pirate') }];
     } else if (player.reputation >= 100) {
       title = '第二章：皇家的恩宠';
-      content = '女王陛下听说了你的光辉事迹，特地派人送来了帝国委任状。但委任状只是入场券，只有打开所有海域、平定深渊威胁的人，才配真正治理殖民地。';
+      content = '女王陛下听说了你的光辉事迹，特地派人送来了帝国委任状。但委任状只是入场券，你还必须在总督府接下女王远东敕令，打开所有海域、平定深渊威胁，才配真正治理殖民地。';
       options = [{ text: '叩谢皇恩，向总督之路迈进！', onClick: () => onComplete(3, 'governor') }];
     }
   } else if (player.storyProgress === 3) {

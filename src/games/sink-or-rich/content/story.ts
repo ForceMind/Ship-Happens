@@ -61,10 +61,15 @@ export function getStoryStatus(player: PlayerState): StoryStatus | null {
     const missingRoutes = ROUTES.filter(route => !player.unlockedRoutes.includes(route.id));
     const missingPorts = PORTS.filter(port => !player.unlockedPorts.includes(port.id));
     const defeatedLeviathan = player.discoveredEvents.includes('defeated_leviathan');
-    const canAdvance = player.gold >= targetGold && missingRoutes.length === 0 && missingPorts.length === 0 && defeatedLeviathan;
     const branchName = player.storyBranch === 'pirate' ? '海盗王' : '帝国总督';
+    const completedBranchQuest = player.storyBranch === 'pirate'
+      ? player.discoveredEvents.includes('pirate_treasure_found')
+      : player.discoveredEvents.includes('queen_mission_completed');
+    const branchQuestText = player.storyBranch === 'pirate' ? '尚未找到海盗王宝藏' : '尚未完成女王远东敕令';
+    const canAdvance = player.gold >= targetGold && missingRoutes.length === 0 && missingPorts.length === 0 && defeatedLeviathan && completedBranchQuest;
     const objectives: string[] = [];
     if (player.gold < targetGold) objectives.push(`金币 ${player.gold} / ${targetGold}`);
+    if (!completedBranchQuest) objectives.push(branchQuestText);
     if (missingPorts.length > 0) objectives.push(`未解锁港口：${missingPorts.map(port => port.name).join('、')}`);
     if (missingRoutes.length > 0) objectives.push(`未解锁海域：${missingRoutes.map(route => route.name).join('、')}`);
     if (!defeatedLeviathan) objectives.push('尚未击败深渊航线的最终海妖');
@@ -73,7 +78,7 @@ export function getStoryStatus(player: PlayerState): StoryStatus | null {
       title: canAdvance ? `主线终章：${branchName}` : `主线目标：铺平${branchName}之路`,
       description: canAdvance
         ? '你的财富、航海履历和深渊战绩都已经足够支撑最后一步。'
-        : `财富只是门槛之一。想成为${branchName}，必须解锁所有港口与海域，并穿过深渊完成最终挑战。`,
+        : `财富只是门槛之一。想成为${branchName}，必须完成阵营主线任务、解锁所有港口与海域，并穿过深渊完成最终挑战。`,
       objective: canAdvance ? '终章已解锁。' : objectives.join('；'),
       cta: '进入终章',
       canAdvance,

@@ -144,6 +144,24 @@ describe('Game Logic Tests', () => {
     player.unlockedRoutes = ROUTES.map(route => route.id);
     player.discoveredEvents = ['defeated_leviathan'];
 
+    expect(getStoryStatus(player)?.canAdvance).toBe(false);
+
+    player.discoveredEvents.push('queen_mission_completed');
+    expect(getStoryStatus(player)?.canAdvance).toBe(true);
+  });
+
+  it('should require the pirate treasure hunt for the pirate finale', () => {
+    const player = createDefaultPlayerState();
+    player.storyProgress = 3;
+    player.storyBranch = 'pirate';
+    player.gold = 50000;
+    player.unlockedPorts = PORTS.map(port => port.id);
+    player.unlockedRoutes = ROUTES.map(route => route.id);
+    player.discoveredEvents = ['defeated_leviathan'];
+
+    expect(getStoryStatus(player)?.objective).toContain('尚未找到海盗王宝藏');
+
+    player.discoveredEvents.push('pirate_treasure_found');
     expect(getStoryStatus(player)?.canAdvance).toBe(true);
   });
 

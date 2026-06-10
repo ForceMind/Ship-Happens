@@ -45,6 +45,8 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
   const storyStatus = getStoryStatus(player);
   const finaleUnlocked = Boolean(storyStatus?.canAdvance && player.storyProgress === 3);
   const routeNameById = (routeId: string) => ROUTES.find(route => route.id === routeId)?.name || '未知海域';
+  const hasStoryFlag = (flag: string) => player.discoveredEvents.includes(flag);
+  const addStoryFlags = (flags: string[]) => Array.from(new Set([...player.discoveredEvents, ...flags]));
 
   const buyRouteChart = (routeId: string, cost: number, requiredReputation: number, requiredBounty = 0) => {
     const hasReputation = player.reputation >= requiredReputation;
@@ -62,6 +64,60 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         : `需要 ${cost} 金币和 ${requiredReputation} 声望。`;
       setModal({title: '条件不足', msg: requirementText, onConfirm: () => setModal(null)});
     }
+  };
+
+  const acceptQueenMission = () => {
+    setPlayer({
+      ...player,
+      discoveredEvents: addStoryFlags(['queen_mission_accepted']),
+      unlockedPorts: player.unlockedPorts.includes('port_oriental') ? player.unlockedPorts : [...player.unlockedPorts, 'port_oriental']
+    });
+    setModal({
+      title: '女王远东敕令',
+      msg: '女王的密使交给你一封火漆诏书：把王室敕令送到东方明珠港，建立第一条正式远东总督航线。',
+      onConfirm: () => setModal(null)
+    });
+  };
+
+  const completeQueenMission = () => {
+    setPlayer({
+      ...player,
+      gold: player.gold + 5000,
+      reputation: player.reputation + 50,
+      discoveredEvents: addStoryFlags(['queen_mission_completed'])
+    });
+    setModal({
+      title: '敕令送达',
+      msg: '东方商会在女王诏书上盖下印章。帝国承认了你的远东功绩，奖励 5000 金币，声望 +50。',
+      onConfirm: () => setModal(null)
+    });
+  };
+
+  const acceptPirateTreasureHunt = () => {
+    setPlayer({
+      ...player,
+      discoveredEvents: addStoryFlags(['pirate_treasure_clue']),
+      unlockedRoutes: player.unlockedRoutes.includes('route_legend') ? player.unlockedRoutes : [...player.unlockedRoutes, 'route_legend']
+    });
+    setModal({
+      title: '海盗王藏宝图',
+      msg: '密室里的老海盗交出半张盐渍海图：宝藏不在陆地，而在通往东方明珠港的传说航线上。',
+      onConfirm: () => setModal(null)
+    });
+  };
+
+  const completePirateTreasureHunt = () => {
+    setPlayer({
+      ...player,
+      gold: player.gold + 8000,
+      bounty: player.bounty + 50,
+      discoveredEvents: addStoryFlags(['pirate_treasure_found'])
+    });
+    setModal({
+      title: '宝藏现世',
+      msg: '你在东方旧仓库的暗墙后找到了海盗王遗留的金箱和黑旗誓约。获得 8000 金币，通缉 +50。',
+      onConfirm: () => setModal(null)
+    });
   };
 
   const buyShip = (shipId: string) => {
@@ -687,6 +743,16 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 </button>
               )}
 
+              {player.storyProgress === 3 && player.storyBranch === 'governor' && !hasStoryFlag('queen_mission_accepted') && (
+                <button
+                  className={styles.btnPrimary}
+                  style={{ backgroundColor: '#FFD700', color: '#000' }}
+                  onClick={acceptQueenMission}
+                >
+                  接女王远东敕令
+                </button>
+              )}
+
               {!player.unlockedPorts.includes('port_oriental') && (
                 <button
                   className={styles.btnPrimary}
@@ -752,6 +818,16 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 </button>
               )}
 
+              {player.storyProgress === 3 && player.storyBranch === 'pirate' && !hasStoryFlag('pirate_treasure_clue') && (
+                <button
+                  className={styles.btnPrimary}
+                  style={{ backgroundColor: '#FFD700', color: '#000' }}
+                  onClick={acceptPirateTreasureHunt}
+                >
+                  接下海盗王宝藏寻觅
+                </button>
+              )}
+
               {storyStatus?.canAdvance && player.storyProgress > 0 && player.storyProgress < 3 && onGoToStory && (
                 <button className={styles.btnPrimary} style={{ backgroundColor: '#FFD700', color: '#000' }} onClick={onGoToStory}>
                   继续主线：拜会海盗王
@@ -773,6 +849,26 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
               >
                 大宗秘宝盲盒 (2000金 / 需3舱位)
               </button>
+
+              {player.storyProgress === 3 && player.storyBranch === 'governor' && hasStoryFlag('queen_mission_accepted') && !hasStoryFlag('queen_mission_completed') && (
+                <button
+                  className={styles.btnPrimary}
+                  style={{ backgroundColor: '#FFD700', color: '#000' }}
+                  onClick={completeQueenMission}
+                >
+                  递交女王远东敕令
+                </button>
+              )}
+
+              {player.storyProgress === 3 && player.storyBranch === 'pirate' && hasStoryFlag('pirate_treasure_clue') && !hasStoryFlag('pirate_treasure_found') && (
+                <button
+                  className={styles.btnPrimary}
+                  style={{ backgroundColor: '#FFD700', color: '#000' }}
+                  onClick={completePirateTreasureHunt}
+                >
+                  搜寻海盗王宝藏
+                </button>
+              )}
             </div>
           </div>
         )}
