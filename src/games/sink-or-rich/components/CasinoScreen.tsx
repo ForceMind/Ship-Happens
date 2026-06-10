@@ -64,9 +64,9 @@ export const CasinoScreen: React.FC<Props> = ({ player, setPlayer, onLeave }) =>
         const multiplier = 3;
         const winnings = clampCasinoPayout(stake * multiplier, stake, profitBeforeRound);
         setPlayer({ ...player, gold: startingGold - stake + winnings, casinoProfitThisPort: profitBeforeRound - stake + winnings });
-        setModal({ title: '赢啦！', msg: `开出了 ${outcome === 'red' ? '红色' : outcome === 'black' ? '黑色' : '绿色'}！恭喜赢取 ${winnings} 金币！`, onConfirm: () => setModal(null) });
+        setModal({ title: '赢啦！', msg: `转盘停下，幸运站在你这边。你赢得 ${winnings} 金币！`, onConfirm: () => setModal(null) });
       } else {
-        setModal({ title: '输了', msg: `开出了 ${outcome === 'red' ? '红色' : outcome === 'black' ? '黑色' : '绿色'}！筹码全被收走了...`, onConfirm: () => setModal(null) });
+        setModal({ title: '输了', msg: '转盘停下，筹码全被收走了...', onConfirm: () => setModal(null) });
       }
     }, 1500);
   };
@@ -95,21 +95,19 @@ export const CasinoScreen: React.FC<Props> = ({ player, setPlayer, onLeave }) =>
       setSlotResult(result);
 
       if (result[0] === result[1] && result[1] === result[2]) {
-        // 3 matches
         if (result[0] === '☠️') {
           const winnings = clampCasinoPayout(stake * 21, stake, profitBeforeRound);
           setPlayer({ ...player, gold: startingGold - stake + winnings, casinoProfitThisPort: profitBeforeRound - stake + winnings });
-          setModal({ title: '💀海盗大奖💀', msg: `摇出三个骷髅头！狂揽 ${winnings} 金币！`, onConfirm: () => setModal(null) });
+          setModal({ title: '走运了！', msg: `机器吐出一袋沉甸甸的金币。你赢得 ${winnings} 金币！`, onConfirm: () => setModal(null) });
         } else {
           const winnings = clampCasinoPayout(stake * 3, stake, profitBeforeRound);
           setPlayer({ ...player, gold: startingGold - stake + winnings, casinoProfitThisPort: profitBeforeRound - stake + winnings });
-          setModal({ title: '大奖！', msg: `摇出三个相同图案！赢得 ${winnings} 金币！`, onConfirm: () => setModal(null) });
+          setModal({ title: '走运了！', msg: `机器吐出一袋金币。你赢得 ${winnings} 金币！`, onConfirm: () => setModal(null) });
         }
       } else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) {
-        // 2 matches
         const winnings = clampCasinoPayout(stake * 2, stake, profitBeforeRound);
         setPlayer({ ...player, gold: startingGold - stake + winnings, casinoProfitThisPort: profitBeforeRound - stake + winnings });
-        setModal({ title: '小奖！', msg: `摇出两个相同图案！赢得 ${winnings} 金币！`, onConfirm: () => setModal(null) });
+        setModal({ title: '有点手气！', msg: `机器吐出一些金币。你赢得 ${winnings} 金币！`, onConfirm: () => setModal(null) });
       } else {
         setModal({ title: '没中', msg: '再来一次，下次一定中！', onConfirm: () => setModal(null) });
       }
@@ -189,7 +187,7 @@ export const CasinoScreen: React.FC<Props> = ({ player, setPlayer, onLeave }) =>
         {activeGame === 'slots' && (
           <div style={{ textAlign: 'center' }}>
             <h3 style={{ marginBottom: '15px' }}>海盗老虎机</h3>
-            <p style={{ color: '#ccc', marginBottom: '20px' }}>两枚同花有赏，三枚同花中大奖，三枚骷髅开海盗秘库。</p>
+            <p style={{ color: '#ccc', marginBottom: '20px' }}>每次拉杆都是随机开奖，剩下就看海风站在哪一边。</p>
 
             <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '30px', fontSize: '4rem', background: '#000', padding: '20px', borderRadius: '10px', border: '4px solid #555' }}>
               <div>{slotResult[0]}</div>
