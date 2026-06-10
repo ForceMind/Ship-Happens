@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage, createDefaultPlayerState, moveShip, resolveCombatTurn, settleArrival, startVoyage } from './index';
+import {
+  calculateMaxHull,
+  calculateRepairCost,
+  calculateRepairUnitCost,
+  canStartVoyage,
+  createDefaultPlayerState,
+  getEnemyCombatHint,
+  getSeaEntityChaseSpeed,
+  moveShip,
+  resolveCombatTurn,
+  settleArrival,
+  startVoyage
+} from './index';
 import { SHIPS, ARMORS, CARGO_TYPES, ROUTES, PORTS } from '../content/data';
 import { getStoryStatus } from '../content/story';
 import { clampCasinoPayout } from '../content/casino';
@@ -85,6 +97,62 @@ describe('Game Logic Tests', () => {
 
     expect(junkMove).toBeGreaterThan(fishingMove);
     expect(fishingMove).toBeGreaterThan(heavyMove);
+  });
+
+  it('should give sea monsters different chase speeds and combat hints', () => {
+    const octopusSpeed = getSeaEntityChaseSpeed({ type: 'monster', eventId: 'event_giant_octopus' });
+    const serpentSpeed = getSeaEntityChaseSpeed({ type: 'monster', eventId: 'event_sea_serpent' });
+    const whaleSpeed = getSeaEntityChaseSpeed({ type: 'monster', eventId: 'event_white_whale' });
+    const leviathanSpeed = getSeaEntityChaseSpeed({ type: 'monster', eventId: 'event_leviathan' });
+
+    expect(serpentSpeed).toBeGreaterThan(leviathanSpeed);
+    expect(leviathanSpeed).toBeGreaterThan(octopusSpeed);
+    expect(octopusSpeed).toBeGreaterThan(whaleSpeed);
+    expect(getSeaEntityChaseSpeed({ type: 'pirate', eventId: 'event_pirate_block' })).toBe(2.5);
+    expect(getEnemyCombatHint('enemy_sea_serpent')).toContain('链弹');
+  });
+
+  it('should apply distinct sea monster combat traits', () => {
+    const route = ROUTES.find(r => r.id === 'route_black_tide')!;
+    const ship = SHIPS.find(s => s.id === 'ship_ultimate')!;
+    const createCombatPlayer = () => ({
+      ...createDefaultPlayerState(),
+      currentShip: ship,
+      currentHull: ship.maxHull,
+      ownedAmmo: { ammo_normal: 1, ammo_chain: 1, ammo_fire: 1 },
+    });
+    const createCombatVoyage = (enemyId: string) => ({
+      route,
+      destinationPortId: 'port_nassau',
+      position: 0,
+      totalNodes: route.totalNodes,
+      mapWidth: 800,
+      mapHeight: 2600,
+      playerPosition: { x: 100, y: 1000 },
+      distanceTraveled: 0,
+      entities: [],
+      mode: 'combat' as const,
+      temporaryGold: 0,
+      lootCargo: [],
+      eventsResolved: 0,
+      enemiesDefeated: 0,
+      monstersDefeated: 0,
+      log: [],
+      combatState: {
+        enemyId,
+        enemyHp: 100,
+        enemyMaxHp: 100,
+        enemyNextAttackReduced: false,
+        playerRepairedThisCombat: false,
+        log: [],
+      },
+      currentEvent: null,
+    });
+
+    expect(resolveCombatTurn(createCombatPlayer(), createCombatVoyage('enemy_white_whale'), 'attack_normal').voyage.combatState?.enemyHp).toBe(90);
+    expect(resolveCombatTurn(createCombatPlayer(), createCombatVoyage('enemy_sea_serpent'), 'attack_chain').voyage.combatState?.enemyHp).toBe(82);
+    expect(resolveCombatTurn(createCombatPlayer(), createCombatVoyage('enemy_monster_1'), 'attack_fire').voyage.combatState?.enemyHp).toBe(55);
+    expect(resolveCombatTurn(createCombatPlayer(), createCombatVoyage('enemy_leviathan'), 'board').voyage.combatState?.enemyHp).toBe(100);
   });
 
   it('should keep carried cargo and add loot after successful arrival', () => {

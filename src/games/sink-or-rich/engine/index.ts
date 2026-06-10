@@ -28,6 +28,17 @@ function getEventEntityType(eventId: string): SeaEntityType {
   return 'cargo';
 }
 
+export function getSeaEntityChaseSpeed(entity: Pick<SeaEntity, 'type' | 'eventId'>): number {
+  if (entity.type === 'pirate') return 2.5;
+  if (entity.type !== 'monster') return 0;
+
+  if (entity.eventId === 'event_giant_octopus') return 1.4;
+  if (entity.eventId === 'event_sea_serpent') return 3.2;
+  if (entity.eventId === 'event_white_whale') return 0.9;
+  if (entity.eventId === 'event_leviathan') return 2.2;
+  return 2.0;
+}
+
 export function createDefaultPlayerState(): PlayerState {
   return {
     currentPortId: 'port_royal',
@@ -248,7 +259,7 @@ export function moveShip(player: PlayerState, voyage: VoyageState, dx: number, d
 
       // Aggro radius 400px
       if (dist < 400 && dist > 5) {
-        const baseSpeed = newEntity.type === 'pirate' ? 2.5 : 2.0;
+        const baseSpeed = getSeaEntityChaseSpeed(newEntity);
         const actualTimeScale = Math.max(0.1, timeScale); // ensure they move slightly even if player barely moves
         newEntity.x += (dxEnemy / dist) * baseSpeed * actualTimeScale;
         newEntity.y += (dyEnemy / dist) * baseSpeed * actualTimeScale;
@@ -351,6 +362,53 @@ export function checkSinking(player: PlayerState, voyage: VoyageState): { player
 
 export type CombatAction = 'attack_normal' | 'attack_chain' | 'attack_fire' | 'board' | 'repair' | 'flee';
 
+export function getEnemyCombatHint(enemyId: string): string | null {
+  if (enemyId === 'enemy_monster_1') return '行动较慢，火弹效果最好，靠近肉搏会被触手反击。';
+  if (enemyId === 'enemy_sea_serpent') return '追击最快，链弹更容易缠住它，普通炮击较难命中。';
+  if (enemyId === 'enemy_white_whale') return '行动很慢但皮厚，普通炮击效果差，适合火弹或消耗战。';
+  if (enemyId === 'enemy_leviathan') return '最终海妖，船体巨大，无法登船肉搏。';
+  return null;
+}
+
+function getEnemyAttackText(enemyId: string): string {
+  if (enemyId === 'enemy_monster_1') return '触手抽击';
+  if (enemyId === 'enemy_sea_serpent') return '蛇身突刺';
+  if (enemyId === 'enemy_white_whale') return '鲸尾撞击';
+  if (enemyId === 'enemy_leviathan') return '深渊重击';
+  return '敌人发动攻击';
+}
+
+function applyNormalDamageTraits(enemyId: string, damage: number): number {
+  if (enemyId === 'enemy_sea_serpent') return Math.max(1, damage - 3);
+  if (enemyId === 'enemy_white_whale') return Math.max(1, damage - 5);
+  if (enemyId === 'enemy_leviathan') return Math.max(1, damage - 5);
+  return damage;
+}
+
+function getChainDamage(enemyId: string): number {
+  if (enemyId === 'enemy_sea_serpent') return 18;
+  if (enemyId === 'enemy_monster_1') return 12;
+  if (enemyId === 'enemy_white_whale') return 6;
+  if (enemyId === 'enemy_leviathan') return 8;
+  return 10;
+}
+
+function getFireDamage(enemyId: string, isMonster: boolean): number {
+  if (!isMonster) return 20;
+  if (enemyId === 'enemy_monster_1') return 45;
+  if (enemyId === 'enemy_sea_serpent') return 35;
+  if (enemyId === 'enemy_white_whale') return 24;
+  if (enemyId === 'enemy_leviathan') return 35;
+  return 35;
+}
+
+function getMonsterBoardDamage(enemyId: string): number {
+  if (enemyId === 'enemy_monster_1') return Math.floor(Math.random() * 9) + 6;
+  if (enemyId === 'enemy_sea_serpent') return Math.floor(Math.random() * 11) + 8;
+  if (enemyId === 'enemy_white_whale') return Math.floor(Math.random() * 8) + 5;
+  return Math.floor(Math.random() * 10) + 6;
+}
+
 export function resolveCombatTurn(player: PlayerState, voyage: VoyageState, action: CombatAction): { player: PlayerState, voyage: VoyageState } {
   if (voyage.mode !== 'combat' || !voyage.combatState) return { player, voyage };
   let combat = { ...voyage.combatState };
@@ -366,30 +424,47 @@ export function resolveCombatTurn(player: PlayerState, voyage: VoyageState, acti
     newPlayer.ownedAmmo['ammo_normal'] = (newPlayer.ownedAmmo['ammo_normal'] || 0) - 1;
     let dmg = 15;
     if (newPlayer.ownedCrew.some(c => c.id === 'crew_gunner')) dmg = Math.floor(dmg * 1.2);
+    dmg = applyNormalDamageTraits(enemy.id, dmg);
     combat.enemyHp -= dmg;
     combatLogs.push(`普通炮击造成了 ${dmg} 点伤害。`);
   } else if (action === 'attack_chain') {
     newPlayer.ownedAmmo['ammo_chain'] = (newPlayer.ownedAmmo['ammo_chain'] || 0) - 1;
-    let dmg = 10;
+    let dmg = getChainDamage(enemy.id);
     combat.enemyHp -= dmg;
     combat.enemyNextAttackReduced = true;
     combatLogs.push(`链弹造成了 ${dmg} 点伤害，敌人下一次攻击将被削弱。`);
   } else if (action === 'attack_fire') {
     newPlayer.ownedAmmo['ammo_fire'] = (newPlayer.ownedAmmo['ammo_fire'] || 0) - 1;
-    let dmg = 20;
-    if (isMonster) dmg += 15;
+    let dmg = getFireDamage(enemy.id, isMonster);
     combat.enemyHp -= dmg;
     combatLogs.push(`火弹造成了 ${dmg} 点伤害。`);
   } else if (action === 'board') {
-    let dmg = Math.floor(Math.random() * 16) + 10; // 10-25
-    const hasPirateKing = newPlayer.ownedCrew.some(c => c.id === 'crew_pirate_king');
-    if (hasPirateKing) dmg = Math.floor(dmg * 1.3);
-    combat.enemyHp -= dmg;
-    combatLogs.push(`登船战造成了 ${dmg} 点伤害。`);
-    if (Math.random() < 0.2 && newPlayer.ownedCrew.length > 0) {
-      const lostIdx = Math.floor(Math.random() * newPlayer.ownedCrew.length);
-      combatLogs.push(`惨烈肉搏中，${newPlayer.ownedCrew[lostIdx].name} 牺牲了！`);
-      newPlayer.ownedCrew.splice(lostIdx, 1);
+    if (isMonster) {
+      if (enemy.id === 'enemy_leviathan') {
+        combatLogs.push('利维坦太巨大，无法登船肉搏。');
+      } else {
+        let dmg = getMonsterBoardDamage(enemy.id);
+        const hasPirateKing = newPlayer.ownedCrew.some(c => c.id === 'crew_pirate_king');
+        if (hasPirateKing) dmg = Math.floor(dmg * 1.2);
+        combat.enemyHp -= dmg;
+        combatLogs.push(`冒险靠近海怪造成了 ${dmg} 点伤害。`);
+        if (Math.random() < 0.35 && newPlayer.ownedCrew.length > 0) {
+          const lostIdx = Math.floor(Math.random() * newPlayer.ownedCrew.length);
+          combatLogs.push(`海怪反击中，${newPlayer.ownedCrew[lostIdx].name} 牺牲了！`);
+          newPlayer.ownedCrew.splice(lostIdx, 1);
+        }
+      }
+    } else {
+      let dmg = Math.floor(Math.random() * 16) + 10; // 10-25
+      const hasPirateKing = newPlayer.ownedCrew.some(c => c.id === 'crew_pirate_king');
+      if (hasPirateKing) dmg = Math.floor(dmg * 1.3);
+      combat.enemyHp -= dmg;
+      combatLogs.push(`登船战造成了 ${dmg} 点伤害。`);
+      if (Math.random() < 0.2 && newPlayer.ownedCrew.length > 0) {
+        const lostIdx = Math.floor(Math.random() * newPlayer.ownedCrew.length);
+        combatLogs.push(`惨烈肉搏中，${newPlayer.ownedCrew[lostIdx].name} 牺牲了！`);
+        newPlayer.ownedCrew.splice(lostIdx, 1);
+      }
     }
   } else if (action === 'repair') {
     combat.playerRepairedThisCombat = true;
@@ -483,7 +558,7 @@ export function resolveCombatTurn(player: PlayerState, voyage: VoyageState, acti
   }
 
   newPlayer.currentHull -= enemyAttack;
-  combatLogs.push(`敌人发动攻击，造成 ${enemyAttack} 点伤害！`);
+  combatLogs.push(`${getEnemyAttackText(enemy.id)}，造成 ${enemyAttack} 点伤害！`);
   combat.log = combatLogs.reverse(); // recent first
 
   newVoyage.combatState = combat;

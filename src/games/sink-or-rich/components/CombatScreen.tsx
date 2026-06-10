@@ -1,7 +1,7 @@
 import React from 'react';
 import { PlayerState, VoyageState } from '../types';
 import { ENEMIES } from '../content/data';
-import { calculateMaxHull, CombatAction } from '../engine';
+import { calculateMaxHull, CombatAction, getEnemyCombatHint } from '../engine';
 import styles from './styles.module.css';
 
 interface Props {
@@ -20,6 +20,7 @@ export const CombatScreen: React.FC<Props> = ({ player, voyage, onCombatAction }
   const maxHull = calculateMaxHull(player.currentShip, player.ownedArmor);
   const hullPercent = Math.max(0, Math.min(100, (player.currentHull / maxHull) * 100));
   const enemyHpPercent = Math.max(0, Math.min(100, (combat.enemyHp / combat.enemyMaxHp) * 100));
+  const combatHint = getEnemyCombatHint(enemy.id);
 
   const hasNormalAmmo = (player.ownedAmmo['ammo_normal'] || 0) > 0;
   const hasChainAmmo = (player.ownedAmmo['ammo_chain'] || 0) > 0;
@@ -32,6 +33,7 @@ export const CombatScreen: React.FC<Props> = ({ player, voyage, onCombatAction }
       <div className={styles.card} style={{ borderColor: '#f44336', borderWidth: '2px', borderStyle: 'solid' }}>
         <h3 className={styles.cardTitle}>{enemy.name}</h3>
         <p className={styles.itemDesc}>{enemy.description}</p>
+        {combatHint && <p className={styles.itemDesc} style={{ color: '#f6d365', marginTop: '8px' }}>特性：{combatHint}</p>}
         <div className={styles.healthBarContainer}>
           <div className={styles.healthBarFill} style={{ width: `${enemyHpPercent}%`, background: 'linear-gradient(90deg, #b71c1c, #f44336)' }}></div>
           <div className={styles.healthText}>敌方生命: {combat.enemyHp} / {combat.enemyMaxHp}</div>

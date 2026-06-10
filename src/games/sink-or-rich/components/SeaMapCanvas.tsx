@@ -194,7 +194,7 @@ export const SeaMapCanvas: React.FC<Props> = ({ player, voyage, ship, onMove, is
           const ey = entity.y - camY;
           // Only draw if roughly in viewport
           if (ex > -100 && ex < vpWidth + 100 && ey > -100 && ey < vpHeight + 100) {
-            drawEntity(ctx, entity.type, ex, ey, entity.radius, time);
+            drawEntity(ctx, entity.type, entity.eventId, ex, ey, entity.radius, time);
           }
         }
       }
@@ -308,7 +308,7 @@ export const SeaMapCanvas: React.FC<Props> = ({ player, voyage, ship, onMove, is
   );
 };
 
-function drawEntity(ctx: CanvasRenderingContext2D, type: SeaEntity['type'], x: number, y: number, r: number, time: number) {
+function drawEntity(ctx: CanvasRenderingContext2D, type: SeaEntity['type'], eventId: string, x: number, y: number, r: number, time: number) {
   ctx.save();
   try {
     ctx.translate(x, y);
@@ -354,15 +354,7 @@ function drawEntity(ctx: CanvasRenderingContext2D, type: SeaEntity['type'], x: n
         ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(20, 10); ctx.lineTo(-20, 10); ctx.fill();
         break;
       case 'monster':
-        ctx.scale(r / 40, r / 40);
-        ctx.fillStyle = '#800080';
-        ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = '#800080';
-        for(let i=0; i<8; i++) {
-          ctx.rotate(Math.PI / 4);
-          ctx.beginPath(); ctx.moveTo(0, 10); ctx.quadraticCurveTo(15, 20, 0, 30 + Math.sin(time/200 + i)*10); ctx.stroke();
-        }
+        drawMonsterEntity(ctx, eventId, r, time);
         break;
       case 'pirate':
       case 'merchant':
@@ -389,6 +381,113 @@ function drawEntity(ctx: CanvasRenderingContext2D, type: SeaEntity['type'], x: n
     }
   } finally {
     ctx.restore();
+  }
+}
+
+function drawMonsterEntity(ctx: CanvasRenderingContext2D, eventId: string, r: number, time: number) {
+  ctx.scale(r / 40, r / 40);
+
+  if (eventId === 'event_sea_serpent') {
+    ctx.rotate(Math.sin(time / 400) * 0.18);
+    ctx.strokeStyle = '#1f8f64';
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-30, 18);
+    ctx.bezierCurveTo(-12, -18, 15, 22, 32, -10);
+    ctx.stroke();
+    ctx.strokeStyle = '#63d49a';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-22, 12);
+    ctx.bezierCurveTo(-6, -8, 14, 14, 26, -6);
+    ctx.stroke();
+    ctx.fillStyle = '#1f8f64';
+    ctx.beginPath();
+    ctx.ellipse(33, -11, 10, 7, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath();
+    ctx.arc(37, -14, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0a3d2b';
+    ctx.beginPath();
+    ctx.moveTo(42, -10);
+    ctx.lineTo(51, -14);
+    ctx.lineTo(42, -6);
+    ctx.fill();
+    return;
+  }
+
+  if (eventId === 'event_white_whale') {
+    ctx.rotate(Math.sin(time / 600) * 0.08);
+    ctx.fillStyle = '#e8f6ff';
+    ctx.strokeStyle = '#7bb7d8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 28, 16, -0.08, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#b9dff2';
+    ctx.beginPath();
+    ctx.moveTo(-26, -2);
+    ctx.quadraticCurveTo(-43, -18, -38, 3);
+    ctx.quadraticCurveTo(-46, 15, -25, 7);
+    ctx.fill();
+    ctx.fillStyle = '#6fb5d6';
+    ctx.beginPath();
+    ctx.arc(12, -5, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(232, 246, 255, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(8, -17);
+    ctx.quadraticCurveTo(4, -28, 11, -36 + Math.sin(time / 220) * 3);
+    ctx.stroke();
+    return;
+  }
+
+  if (eventId === 'event_leviathan') {
+    ctx.rotate(Math.sin(time / 550) * 0.12);
+    ctx.fillStyle = '#1b2337';
+    ctx.strokeStyle = '#5f6f95';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, -34);
+    ctx.quadraticCurveTo(30, -26, 34, 3);
+    ctx.quadraticCurveTo(20, 34, -12, 30);
+    ctx.quadraticCurveTo(-38, 15, -30, -15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#37476f';
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * 11, -27 + Math.abs(i) * 2);
+      ctx.lineTo(i * 11 + 5, -45 + Math.abs(i) * 5);
+      ctx.lineTo(i * 11 + 10, -24 + Math.abs(i) * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#f9c74f';
+    ctx.beginPath();
+    ctx.arc(12, -7, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#b00020';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-24, 20);
+    ctx.quadraticCurveTo(-48, 33, -58, 10 + Math.sin(time / 200) * 4);
+    ctx.stroke();
+    return;
+  }
+
+  ctx.fillStyle = '#800080';
+  ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#800080';
+  for (let i = 0; i < 8; i++) {
+    ctx.rotate(Math.PI / 4);
+    ctx.beginPath(); ctx.moveTo(0, 10); ctx.quadraticCurveTo(15, 20, 0, 30 + Math.sin(time / 200 + i) * 10); ctx.stroke();
   }
 }
 
