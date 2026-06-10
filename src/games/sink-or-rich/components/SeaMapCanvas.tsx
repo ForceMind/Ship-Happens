@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { VoyageState, Ship, SeaEntity, PlayerState } from '../types';
+import { getVoyageDestinationPosition } from '../engine';
 
 interface Props {
   player: PlayerState;
@@ -168,8 +169,9 @@ export const SeaMapCanvas: React.FC<Props> = ({ player, voyage, ship, onMove, is
         ctx.fillRect(0, 0, vpWidth, 100 - camY);
 
         // Draw Port City and Docks
-        const portX = mapWidth / 2 - camX;
-        const portY = 140 - camY;
+        const destinationPosition = getVoyageDestinationPosition(currentVoyage);
+        const portX = destinationPosition.x - camX;
+        const portY = destinationPosition.y - 10 - camY;
 
         // Docks (Wooden piers extending into water)
         ctx.fillStyle = '#8B4513';

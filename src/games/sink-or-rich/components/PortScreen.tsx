@@ -370,9 +370,8 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
     }
   };
 
-  const doRepay = () => {
-    if (player.debt > 0 && player.gold > 0) {
-      const amount = Math.min(player.gold, player.debt, 1000);
+  const doRepay = (amount: number) => {
+    if (player.debt > 0 && player.gold >= amount) {
       setPlayer({ ...player, gold: player.gold - amount, debt: player.debt - amount });
     }
   };
@@ -707,13 +706,24 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
               <span className={styles.statValue}>💰 {creditLimit} (基于声望)</span>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button className={styles.btnPrimary} disabled={player.debt >= creditLimit} onClick={doBorrow}>
                 借款 +1000
               </button>
-              <button className={styles.btnSecondary} disabled={player.debt <= 0 || player.gold <= 0} onClick={doRepay}>
-                还款 -1000
-              </button>
+              {player.debt > 500 && (
+                <button className={styles.btnSecondary} disabled={player.gold < 500} onClick={() => doRepay(500)}>
+                  还款 500
+                </button>
+              )}
+              {player.debt > 0 ? (
+                <button className={styles.btnSecondary} disabled={player.gold < player.debt} onClick={() => doRepay(player.debt)}>
+                  全部还清 {player.debt}
+                </button>
+              ) : (
+                <button className={styles.btnSecondary} disabled>
+                  暂无债务
+                </button>
+              )}
             </div>
             {player.debt > 20000 && <p style={{ color: '#f44336', marginTop: '10px' }}>⚠️ 警告：您的债务已超标，讨债佣兵可能在海上拦截您！</p>}
           </div>

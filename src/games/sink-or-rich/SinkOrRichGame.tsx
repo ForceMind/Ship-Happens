@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlayerState, VoyageState, Route } from './types';
 import { loadGame, saveGame, resetGame } from './storage';
-import { startVoyage, moveShip, triggerEvent, resolveEventChoice, resolveCombatTurn, settleArrival, settleReturn, settleSinking, CombatAction } from './engine';
+import { startVoyage, moveShip, triggerEvent, resolveEventChoice, resolveCombatTurn, settleArrival, settleReturn, settleSinking, CombatAction, getVoyageDestinationPosition } from './engine';
 
 import { TitleScreen } from './components/TitleScreen';
 import { PortScreen } from './components/PortScreen';
@@ -85,18 +85,23 @@ export const SinkOrRichGame: React.FC = () => {
   const handleShipMove = (dx: number, dy: number) => {
     if (!voyage) return;
 
-    const portX = voyage.mapWidth / 2;
-    const portY = 150;
-    const distToPort = Math.sqrt(Math.pow(voyage.playerPosition.x - portX, 2) + Math.pow(voyage.playerPosition.y - portY, 2));
+    const isAtDestination = (candidateVoyage: VoyageState) => {
+      const destinationPosition = getVoyageDestinationPosition(candidateVoyage);
+      const distToPort = Math.sqrt(Math.pow(candidateVoyage.playerPosition.x - destinationPosition.x, 2) + Math.pow(candidateVoyage.playerPosition.y - destinationPosition.y, 2));
+      return distToPort <= 60 && candidateVoyage.mode === 'sailing' && !candidateVoyage.currentEvent;
+    };
 
-    if (distToPort <= 60 && voyage.mode === 'sailing' && !voyage.currentEvent) {
-      // Arrived
-      const { player: p, resultMsg } = settleArrival(player, voyage);
+    const finishArrival = (arrivalPlayer: PlayerState, arrivalVoyage: VoyageState) => {
+      const { player: p, resultMsg } = settleArrival(arrivalPlayer, arrivalVoyage);
       setPlayer(p);
       setVoyage(null);
       setSettlementResult(resultMsg);
       setSettlementMode('arrived');
       setScreen('settlement');
+    };
+
+    if (isAtDestination(voyage)) {
+      finishArrival(player, voyage);
       return;
     }
 
@@ -108,6 +113,10 @@ export const SinkOrRichGame: React.FC = () => {
       setVoyage(vWithEvent);
       if (vWithEvent.mode === 'combat') setScreen('combat');
     } else {
+      if (isAtDestination(v)) {
+        finishArrival(p, v);
+        return;
+      }
       setPlayer(p);
       setVoyage(v);
       if (v.mode === 'sunk') {

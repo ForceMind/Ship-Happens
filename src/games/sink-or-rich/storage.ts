@@ -70,6 +70,9 @@ export function loadGame(): { player: PlayerState; voyage: VoyageState | null } 
     }
 
     let voyage = vStr ? JSON.parse(vStr) : null;
+    if (voyage && !voyage.destinationPosition) {
+      voyage.destinationPosition = { x: voyage.mapWidth / 2, y: 150 };
+    }
 
     return { player, voyage };
   } catch (e) {

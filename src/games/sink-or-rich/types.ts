@@ -184,6 +184,7 @@ export interface VoyageState {
   totalNodes: number;
   mapWidth: number;
   mapHeight: number;
+  destinationPosition?: { x: number; y: number };
   playerPosition: { x: number; y: number };
   distanceTraveled: number;
   entities: SeaEntity[];

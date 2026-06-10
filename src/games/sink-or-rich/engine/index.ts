@@ -39,6 +39,17 @@ export function getSeaEntityChaseSpeed(entity: Pick<SeaEntity, 'type' | 'eventId
   return 2.0;
 }
 
+export function createVoyageDestinationPosition(mapWidth: number): { x: number; y: number } {
+  const side = Math.random() < 0.5 ? -1 : 1;
+  const offset = 140 + Math.random() * 200;
+  const x = Math.max(90, Math.min(mapWidth - 90, Math.round(mapWidth / 2 + side * offset)));
+  return { x, y: 150 };
+}
+
+export function getVoyageDestinationPosition(voyage: Pick<VoyageState, 'mapWidth' | 'destinationPosition'>): { x: number; y: number } {
+  return voyage.destinationPosition || { x: voyage.mapWidth / 2, y: 150 };
+}
+
 export function createDefaultPlayerState(): PlayerState {
   return {
     currentPortId: 'port_royal',
@@ -131,6 +142,7 @@ export function canStartVoyage(player: PlayerState): boolean {
 export function startVoyage(player: PlayerState, route: Route, destinationPortId: string): { player: PlayerState, voyage: VoyageState } {
   const mapWidth = 800;
   const mapHeight = route.totalNodes * 400 + 600; // e.g. 5 nodes = 2600 height
+  const destinationPosition = createVoyageDestinationPosition(mapWidth);
 
   // Generate entities based on route risk
   const entityCount = Math.floor(route.totalNodes * route.riskMultiplier * 1.5);
@@ -199,6 +211,7 @@ export function startVoyage(player: PlayerState, route: Route, destinationPortId
       totalNodes: route.totalNodes,
       mapWidth,
       mapHeight,
+      destinationPosition,
       playerPosition: { x: mapWidth / 2, y: mapHeight - 100 },
       distanceTraveled: 0,
       entities: generatedEntities,

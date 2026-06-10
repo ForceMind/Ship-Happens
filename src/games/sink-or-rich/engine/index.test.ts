@@ -7,6 +7,7 @@ import {
   createDefaultPlayerState,
   getEnemyCombatHint,
   getSeaEntityChaseSpeed,
+  getVoyageDestinationPosition,
   moveShip,
   resolveCombatTurn,
   settleArrival,
@@ -97,6 +98,16 @@ describe('Game Logic Tests', () => {
 
     expect(junkMove).toBeGreaterThan(fishingMove);
     expect(fishingMove).toBeGreaterThan(heavyMove);
+  });
+
+  it('should place the destination port away from the starting centerline', () => {
+    const player = createDefaultPlayerState();
+    const route = ROUTES.find(r => r.id === 'route_coastal')!;
+    const { voyage } = startVoyage(player, route, 'port_tortuga');
+    const destinationPosition = getVoyageDestinationPosition(voyage);
+
+    expect(destinationPosition.y).toBe(150);
+    expect(Math.abs(destinationPosition.x - voyage.mapWidth / 2)).toBeGreaterThan(100);
   });
 
   it('should give sea monsters different chase speeds and combat hints', () => {
