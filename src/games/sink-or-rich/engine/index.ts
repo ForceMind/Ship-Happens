@@ -1,9 +1,10 @@
 import { PlayerState, VoyageState, Route, Enemy, CombatState, Ship, Armor, VoyageMode } from '../types';
 import { GAME_EVENTS } from '../content/events';
-import { ENEMIES, CARGO_TYPES } from '../content/data';
+import { ENEMIES, PORTS, CARGO_TYPES } from '../content/data';
 
 export function createDefaultPlayerState(): PlayerState {
   return {
+    currentPortId: 'port_royal',
     gold: 1000,
     reputation: 0,
     bounty: 0,
@@ -61,7 +62,7 @@ export function canStartVoyage(player: PlayerState): boolean {
   return true;
 }
 
-export function startVoyage(player: PlayerState, route: Route): { player: PlayerState, voyage: VoyageState } {
+export function startVoyage(player: PlayerState, route: Route, destinationPortId: string): { player: PlayerState, voyage: VoyageState } {
   const mapWidth = 800;
   const mapHeight = route.totalNodes * 400 + 600; // e.g. 5 nodes = 2600 height
   
@@ -88,6 +89,7 @@ export function startVoyage(player: PlayerState, route: Route): { player: Player
     if (event.id === 'event_ghost_fog') type = 'storm';
     if (event.id === 'event_blockade') type = 'patrol';
     if (event.id === 'event_whirlpool') type = 'reef';
+    if (event.id === 'event_leviathan') type = 'monster';
 
     generatedEntities.push({
       id: `entity_${i}_${Date.now()}`,
@@ -100,10 +102,24 @@ export function startVoyage(player: PlayerState, route: Route): { player: Player
     });
   }
 
+  // Force spawn Leviathan if it's the abyss route
+  if (route.id === 'route_abyss') {
+    generatedEntities.push({
+      id: `entity_boss_${Date.now()}`,
+      type: 'monster',
+      x: mapWidth / 2,
+      y: 400, // Near the end port
+      radius: 120, // Huge radius
+      eventId: 'event_leviathan',
+      resolved: false
+    });
+  }
+
   return {
     player: { ...player, voyageCount: player.voyageCount + 1 },
     voyage: {
       route,
+      destinationPortId,
       position: 0,
       totalNodes: route.totalNodes,
       mapWidth,
@@ -395,9 +411,12 @@ export function settleArrival(player: PlayerState, voyage: VoyageState): { playe
 
   // Trade income
   let tradeIncome = 0;
+  const destinationPort = PORTS.find(port => port.id === voyage.destinationPortId) || PORTS[0];
   const allCargo = [...p.cargo, ...voyage.lootCargo];
   allCargo.forEach(c => {
     let sell = c.sellPrice;
+    const portMultiplier = destinationPort.priceMultipliers[c.id] || 1;
+    sell = Math.floor(sell * portMultiplier);
     if (voyage.route) sell = Math.floor(sell * voyage.route.tradeMultiplier);
     tradeIncome += sell;
   });
@@ -433,6 +452,7 @@ export function settleArrival(player: PlayerState, voyage: VoyageState): { playe
   p.cargo = [];
   p.activeContract = null;
   p.successfulVoyageCount += 1;
+  p.currentPortId = voyage.destinationPortId;
 
   return { player: p, resultMsg: msg };
 }

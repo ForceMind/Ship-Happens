@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PlayerState } from '../types';
-import { SHIPS, CREW_MEMBERS, AMMO_TYPES, ARMORS, CARGO_TYPES, CONTRACTS } from '../content/data';
+import { SHIPS, CREW_MEMBERS, AMMO_TYPES, ARMORS, CARGO_TYPES, CONTRACTS, PORTS } from '../content/data';
 import { calculateCargoUsed, calculateMaxHull, calculateRepairCost, canStartVoyage } from '../engine';
 import styles from './styles.module.css';
 
@@ -8,10 +8,23 @@ interface Props {
   player: PlayerState;
   setPlayer: (p: PlayerState) => void;
   onGoToRouteSelect: () => void;
+  onRetireVictory: () => void;
 }
 
-export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSelect }) => {
+export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSelect, onRetireVictory }) => {
   const [activeTab, setActiveTab] = useState<'ship'|'crew'|'ammo'|'armor'|'cargo'|'contract'|'repair'>('ship');
+
+  const currentPort = PORTS.find(p => p.id === (player.currentPortId || 'port_royal')) || PORTS[0];
+
+  const getCargoBuyPrice = (cargoId: string, baseBuyPrice: number) => {
+    const multiplier = currentPort.priceMultipliers[cargoId] || 1;
+    return Math.floor(baseBuyPrice * multiplier);
+  };
+
+  const getCargoSellPrice = (cargoId: string, baseSellPrice: number) => {
+    const multiplier = currentPort.priceMultipliers[cargoId] || 1;
+    return Math.floor(baseSellPrice * multiplier);
+  };
 
   const maxHull = calculateMaxHull(player.currentShip, player.ownedArmor);
   const cargoUsed = calculateCargoUsed(player);
@@ -54,8 +67,8 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
 
   const buyCargo = (cargoId: string) => {
     const cargo = CARGO_TYPES.find(c => c.id === cargoId)!;
-    if (player.gold >= cargo.buyPrice && cargoUsed + cargo.slots <= cargoTotal) {
-      setPlayer({ ...player, gold: player.gold - cargo.buyPrice, cargo: [...player.cargo, cargo] });
+    if (player.gold >= getCargoBuyPrice(cargo.id, cargo.buyPrice) && cargoUsed + cargo.slots <= cargoTotal) {
+      setPlayer({ ...player, gold: player.gold - getCargoBuyPrice(cargo.id, cargo.buyPrice), cargo: [...player.cargo, cargo] });
     }
   };
 
@@ -87,8 +100,9 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
   };
 
   return (
-    <div className={styles.container}>
-      <h2 style={{ textAlign: 'center' }}>避风港</h2>
+    <div className={styles.container} style={{ backgroundColor: currentPort.colorTheme, transition: 'background-color 1s ease' }}>
+      <h2 style={{ textAlign: 'center', marginBottom: '5px' }}>{currentPort.name}</h2>
+      <p style={{ textAlign: 'center', fontSize: '0.9rem', color: '#ccc', marginBottom: '15px' }}>{currentPort.description}</p>
       
       <div className={styles.statsBar}>
         <div className={styles.statItem}><span className={styles.statLabel}>金币</span><span className={styles.statValue}>💰{player.gold}</span></div>
@@ -97,6 +111,16 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         <div className={styles.statItem}><span className={styles.statLabel}>舱位</span><span className={styles.statValue}>{cargoUsed}/{cargoTotal}</span></div>
         <div className={styles.statItem}><span className={styles.statLabel}>通缉/声望</span><span className={styles.statValue}>☠️{player.bounty} / 🌟{player.reputation}</span></div>
       </div>
+
+      {player.gold >= 50000 && (
+        <div className={styles.card} style={{ borderColor: '#FFD700', background: 'rgba(255, 215, 0, 0.1)' }}>
+          <h3 style={{ color: '#FFD700', textAlign: 'center' }}>你已经积累了惊人的财富！</h3>
+          <p style={{ textAlign: 'center', marginBottom: '10px' }}>你可以选择激流勇退，买下岛屿安度余生。</p>
+          <button className={styles.btnPrimary} style={{ width: '100%', backgroundColor: '#FFD700', color: '#000' }} onClick={onRetireVictory}>
+            退休：富甲一方 (通关)
+          </button>
+        </div>
+      )}
 
       {!player.currentShip && player.gold < 300 && (
         <div className={styles.card} style={{ borderColor: 'red' }}>
@@ -195,19 +219,23 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
 
         {activeTab === 'cargo' && (
           <div className={styles.grid}>
-            {CARGO_TYPES.map(c => (
-              <div key={c.id} className={styles.itemCard}>
-                <div>
-                  <div className={styles.itemName}>{c.name} {c.riskTag === 'illegal' && '☠️'}</div>
-                  <div className={styles.itemDesc}>进价: {c.buyPrice} | 售价: {c.sellPrice}</div>
-                  {c.description && <div className={styles.itemDesc} style={{ color: '#f44336' }}>{c.description}</div>}
-                  <div className={styles.itemPrice}>💰 {c.buyPrice}</div>
+            {CARGO_TYPES.map(c => {
+              const buyPrice = getCargoBuyPrice(c.id, c.buyPrice);
+              const sellPrice = getCargoSellPrice(c.id, c.sellPrice);
+              return (
+                <div key={c.id} className={styles.itemCard}>
+                  <div>
+                    <div className={styles.itemName}>{c.name} {c.riskTag === 'illegal' && '☠️'}</div>
+                    <div className={styles.itemDesc}>进价: {buyPrice} | 售价: {sellPrice}</div>
+                    {c.description && <div className={styles.itemDesc} style={{ color: '#f44336' }}>{c.description}</div>}
+                    <div className={styles.itemPrice}>💰 {buyPrice}</div>
+                  </div>
+                  <button className={styles.btnPrimary} style={{ margin: 0 }} disabled={player.gold < buyPrice || cargoUsed + c.slots > cargoTotal} onClick={() => buyCargo(c.id)}>
+                    买入
+                  </button>
                 </div>
-                <button className={styles.btnPrimary} style={{ margin: 0 }} disabled={player.gold < c.buyPrice || cargoUsed + c.slots > cargoTotal} onClick={() => buyCargo(c.id)}>
-                  买入
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

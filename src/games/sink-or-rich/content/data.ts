@@ -1,4 +1,49 @@
-import { Ship, Crew, Armor, Route, Cargo, Enemy, Ammo, Contract } from '../types';
+import { Ship, Crew, Armor, Route, Cargo, Enemy, Ammo, Contract, Port } from '../types';
+
+export const PORTS: Port[] = [
+  {
+    id: 'port_royal',
+    name: '皇家直辖港',
+    description: '宏伟而森严的首都港口。这里对奢侈品需求极高，但对违禁品查处极其严格。',
+    colorTheme: '#1a365d',
+    priceMultipliers: {
+      cargo_wood: 0.8,
+      cargo_spice: 1.0,
+      cargo_silk: 1.5,
+      cargo_jewelry: 1.5,
+      cargo_weapons: 0.5,
+      cargo_contraband: 0.5,
+    }
+  },
+  {
+    id: 'port_tortuga',
+    name: '龟岛黑市',
+    description: '法外之地。危险但充满机遇，这里军火和违禁品能卖出天价，但没有人需要昂贵的奢侈品。',
+    colorTheme: '#3f2b1a',
+    priceMultipliers: {
+      cargo_wood: 1.0,
+      cargo_spice: 0.8,
+      cargo_silk: 0.7,
+      cargo_jewelry: 0.6,
+      cargo_weapons: 1.8,
+      cargo_contraband: 1.8,
+    }
+  },
+  {
+    id: 'port_oriental',
+    name: '东方明珠港',
+    description: '香料与丝绸的故乡。从这里进货香料和丝绸非常便宜，但木材却极其稀缺。',
+    colorTheme: '#4a1c1c',
+    priceMultipliers: {
+      cargo_wood: 1.5,
+      cargo_spice: 0.6,
+      cargo_silk: 0.6,
+      cargo_jewelry: 1.0,
+      cargo_weapons: 1.0,
+      cargo_contraband: 1.0,
+    }
+  }
+];
 
 export const SHIPS: Ship[] = [
   {
@@ -44,6 +89,17 @@ export const SHIPS: Ship[] = [
     speed: 2,
     repairCostPerHull: 8,
     description: '很耐打，但维修昂贵。'
+  },
+  {
+    id: 'ship_ultimate',
+    name: '海神无畏号',
+    price: 50000,
+    maxHull: 999,
+    cargoSlots: 20,
+    cannonSlots: 5,
+    speed: 5,
+    repairCostPerHull: 20,
+    description: '象征着四海之王的终极战舰，足以去深渊挑战传说中的海妖。'
   }
 ];
 
@@ -91,6 +147,7 @@ export const ROUTES: Route[] = [
   { id: 'route_storm', name: '暴风航线', totalNodes: 7, riskMultiplier: 1.2, tradeMultiplier: 1.5, adventureMultiplier: 1.4, hullLossPerNode: 4, description: '风险和收益都适中。' },
   { id: 'route_black_tide', name: '黑潮航线', totalNodes: 9, riskMultiplier: 1.8, tradeMultiplier: 2.2, adventureMultiplier: 2.0, hullLossPerNode: 5, description: '高风险高收益。' },
   { id: 'route_legend', name: '传说航线', totalNodes: 12, riskMultiplier: 2.4, tradeMultiplier: 3.5, adventureMultiplier: 3.0, hullLossPerNode: 6, description: '极高风险，适合豪赌。' },
+  { id: 'route_abyss', name: '深渊航线', totalNodes: 20, riskMultiplier: 5.0, tradeMultiplier: 10.0, adventureMultiplier: 10.0, hullLossPerNode: 15, description: '只有亡命之徒和真正的海神才敢踏足的死地。这里栖息着终极怪物。' },
 ];
 
 export const ENEMIES: Enemy[] = [
@@ -98,5 +155,6 @@ export const ENEMIES: Enemy[] = [
   { id: 'enemy_pirate_2', name: '强盗快船', maxHp: 45, attack: 10, rewardGold: 140, type: 'pirate', description: '速度很快的小型海盗船' },
   { id: 'enemy_monster_1', name: '巨型章鱼', maxHp: 90, attack: 16, rewardGold: 300, type: 'monster', description: '潜伏在深海的恐怖巨兽' },
   { id: 'enemy_monster_2', name: '幽灵船', maxHp: 100, attack: 18, rewardGold: 360, type: 'monster', description: '传说中永远在海上漂泊的亡灵船' },
-  { id: 'enemy_patrol_1', name: '巡逻舰', maxHp: 120, attack: 20, rewardGold: 250, type: 'patrol', description: '火力强大的王国正规军' },
+  { id: 'enemy_patrol_1', name: '海军巡防舰', maxHp: 120, attack: 20, rewardGold: 0, type: 'patrol', description: '代表王室维持治安的军舰，击沉会遭到通缉' },
+  { id: 'enemy_leviathan', name: '海妖之母·利维坦', maxHp: 1500, attack: 80, rewardGold: 100000, type: 'monster', description: '【最终BOSS】海洋的真正霸主，深渊航线的主宰！' }
 ];

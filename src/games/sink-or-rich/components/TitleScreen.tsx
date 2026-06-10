@@ -40,6 +40,9 @@ export const TitleScreen: React.FC<Props> = ({ player, onStartNew, onContinue, o
           </button>
         )}
       </div>
+      <div style={{ position: 'fixed', bottom: '10px', right: '10px', color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem' }}>
+        v1.0.0
+      </div>
     </div>
   );
 };

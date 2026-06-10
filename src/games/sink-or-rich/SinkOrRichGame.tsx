@@ -61,8 +61,8 @@ export const SinkOrRichGame: React.FC = () => {
     handleStartNew();
   };
 
-  const handleSelectRoute = (route: Route) => {
-    const { player: p, voyage: v } = startVoyage(player, route);
+  const handleSelectRoute = (route: Route, destinationPortId: string) => {
+    const { player: p, voyage: v } = startVoyage(player, route, destinationPortId);
     setPlayer(p);
     setVoyage(v);
     setScreen('voyage');
@@ -177,10 +177,12 @@ export const SinkOrRichGame: React.FC = () => {
           player={player} 
           setPlayer={setPlayer} 
           onGoToRouteSelect={() => setScreen('route_select')} 
+          onRetireVictory={() => setScreen('game_over')}
         />
       )}
       {screen === 'route_select' && (
         <RouteSelect 
+          currentPortId={player.currentPortId || 'port_royal'}
           onSelectRoute={handleSelectRoute} 
           onCancel={() => setScreen('port')} 
         />

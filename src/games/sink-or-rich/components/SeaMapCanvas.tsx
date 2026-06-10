@@ -16,6 +16,7 @@ export const SeaMapCanvas: React.FC<Props> = ({ player, voyage, ship, onMove, is
   const angleRef = useRef<number>(-Math.PI / 2);
   const pointerStateRef = useRef({ isDown: false, startX: 0, startY: 0, x: 0, y: 0 });
   const lastTimeRef = useRef<number>(performance.now());
+  const particlesRef = useRef<{ x: number; y: number; life: number; maxLife: number; size: number }[]>([]);
 
   // Use refs for props that update frequently to prevent re-running the heavy useEffect
   const voyageRef = useRef(voyage);
@@ -198,6 +199,34 @@ export const SeaMapCanvas: React.FC<Props> = ({ player, voyage, ship, onMove, is
         }
       }
 
+      // Update and draw Wake Particles
+      if (isMoving && Math.random() > 0.3) {
+        // spawn behind the ship
+        const spawnX = currentVoyage.playerPosition.x - Math.cos(angleRef.current) * 15 + (Math.random() - 0.5) * 5;
+        const spawnY = currentVoyage.playerPosition.y - Math.sin(angleRef.current) * 15 + (Math.random() - 0.5) * 5;
+        particlesRef.current.push({ x: spawnX, y: spawnY, life: 1.0, maxLife: 1.0, size: 2 + Math.random() * 3 });
+      }
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      for (let i = particlesRef.current.length - 1; i >= 0; i--) {
+        const p = particlesRef.current[i];
+        p.life -= dt * 0.6; // lifetime fade
+        if (p.life <= 0) {
+          particlesRef.current.splice(i, 1);
+        } else {
+          p.size += dt * 8; // expand
+          const pxParticle = p.x - camX;
+          const pyParticle = p.y - camY;
+          if (pxParticle > -20 && pxParticle < vpWidth + 20 && pyParticle > -20 && pyParticle < vpHeight + 20) {
+            ctx.globalAlpha = Math.max(0, p.life / p.maxLife) * 0.5;
+            ctx.beginPath();
+            ctx.arc(pxParticle, pyParticle, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+      ctx.globalAlpha = 1.0;
+
       // Draw Player Ship
       const px = currentVoyage.playerPosition.x - camX;
       const py = currentVoyage.playerPosition.y - camY;
@@ -302,6 +331,7 @@ function drawEntity(ctx: CanvasRenderingContext2D, type: SeaEntity['type'], x: n
         ctx.beginPath(); ctx.arc(0, 0, r * 0.2, 0, Math.PI * 2); ctx.stroke();
         break;
       case 'cargo':
+        ctx.scale(r / 40, r / 40);
         ctx.fillStyle = '#8B4513';
         ctx.fillRect(-15, -15, 30, 30);
         ctx.strokeStyle = '#D2B48C';
@@ -317,12 +347,14 @@ function drawEntity(ctx: CanvasRenderingContext2D, type: SeaEntity['type'], x: n
         ctx.beginPath(); ctx.arc(10, 5, r * 0.4, 0, Math.PI * 2); ctx.fill();
         break;
       case 'black_market':
+        ctx.scale(r / 40, r / 40);
         ctx.fillStyle = '#333';
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#800080';
         ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(20, 10); ctx.lineTo(-20, 10); ctx.fill();
         break;
       case 'monster':
+        ctx.scale(r / 40, r / 40);
         ctx.fillStyle = '#800080';
         ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
         ctx.lineWidth = 5;
@@ -335,6 +367,7 @@ function drawEntity(ctx: CanvasRenderingContext2D, type: SeaEntity['type'], x: n
       case 'pirate':
       case 'merchant':
       case 'patrol':
+        ctx.scale(r / 40, r / 40);
         ctx.rotate(Math.sin(time/500)*0.2);
         ctx.fillStyle = type === 'pirate' ? '#333' : (type === 'patrol' ? '#4682B4' : '#A0522D');
         ctx.beginPath(); 
@@ -344,6 +377,7 @@ function drawEntity(ctx: CanvasRenderingContext2D, type: SeaEntity['type'], x: n
         ctx.beginPath(); ctx.moveTo(0, -5); ctx.quadraticCurveTo(15, 0, 0, 5); ctx.fill();
         break;
       case 'siren':
+        ctx.scale(r / 40, r / 40);
         ctx.fillStyle = '#555';
         ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#FF69B4';

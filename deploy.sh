@@ -96,6 +96,16 @@ echo -e "${GREEN}编译混淆成功，打包文件位于 dist/ 目录。${NC}"
 # 6. 端口检测与启动
 echo -e "${YELLOW}[6/6] 准备启动预览服务，正在扫描可用端口...${NC}"
 
+# 查找之前由本脚本启动的 vite 进程并杀掉
+if [ -f ".pid" ]; then
+    OLD_PID=$(cat .pid)
+    if ps -p $OLD_PID > /dev/null 2>&1; then
+        echo -e "${YELLOW}检测到之前的服务正在运行 (PID: $OLD_PID)，正在停止老服务...${NC}"
+        kill -9 $OLD_PID
+    fi
+    rm -f .pid
+fi
+
 # 自动规避端口占用 (从 4173 开始往上找)
 PORT=4173
 while :
@@ -113,8 +123,12 @@ done
 
 echo -e "${GREEN}===========================================${NC}"
 echo -e "${GREEN}部署完成！游戏将在端口 $PORT 上运行。${NC}"
-echo -e "${GREEN}正在启动服务 (使用本项目专属 Node.js，按 Ctrl+C 停止)...${NC}"
 echo -e "${GREEN}===========================================${NC}"
 
-# 使用本地的 npx 启动 vite
-npx vite preview --port $PORT --host 0.0.0.0
+# 使用 nohup 在后台运行，不阻塞终端
+nohup npx vite preview --port $PORT --host 0.0.0.0 > server.log 2>&1 &
+NEW_PID=$!
+echo $NEW_PID > .pid
+
+echo -e "${GREEN}服务已在后台静默运行，您可以随时安全地关闭当前终端窗口了！${NC}"
+echo -e "${GREEN}如果想查看运行日志，请输入: tail -f server.log${NC}"

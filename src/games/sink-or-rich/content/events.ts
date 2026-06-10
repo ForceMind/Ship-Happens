@@ -911,5 +911,30 @@ export const GAME_EVENTS: GameEvent[] = [
         }
       }
     ]
+  },
+  {
+    id: 'event_leviathan',
+    name: '深渊的主宰',
+    description: '海面突然沸腾，天空被乌云遮蔽。一只如同岛屿般巨大的海妖从深渊中升起，这就是传说中的利维坦！',
+    options: [
+      {
+        id: 'leviathan_fight',
+        label: '决一死战！',
+        resolve: (player, voyage) => {
+          return { player, voyage, message: '向神明开炮！', combatEnemyId: 'enemy_leviathan' };
+        }
+      },
+      {
+        id: 'leviathan_flee',
+        label: '尝试逃跑 (需损失所有货物和一半耐久)',
+        resolve: (player, voyage) => {
+          return { 
+            player: { ...player, currentHull: Math.max(1, Math.floor(player.currentHull / 2)), cargo: [] }, 
+            voyage: { ...voyage, lootCargo: [] }, 
+            message: '你丢弃了所有货物，勉强逃出了利维坦的漩涡...' 
+          };
+        }
+      }
+    ]
   }
 ];

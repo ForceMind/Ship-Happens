@@ -104,7 +104,16 @@ export interface Enemy {
   description: string;
 }
 
+export interface Port {
+  id: string;
+  name: string;
+  description: string;
+  colorTheme: string; // e.g., '#2a2a35'
+  priceMultipliers: Record<string, number>; // cargoId -> multiplier
+}
+
 export interface PlayerState {
+  currentPortId: string;
   gold: number;
   reputation: number;
   bounty: number;
@@ -148,6 +157,7 @@ export interface SeaEntity {
 
 export interface VoyageState {
   route: Route | null;
+  destinationPortId: string;
   position: number; // Still used conceptually for overall progress
   totalNodes: number;
   mapWidth: number;
