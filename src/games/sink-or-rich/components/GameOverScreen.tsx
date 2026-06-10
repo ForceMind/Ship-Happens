@@ -10,11 +10,11 @@ interface Props {
 
 export function GameOverScreen({ player, onRestart }: Props) {
   const [endingText, setEndingText] = useState('');
-  const isVictory = player.gold >= 50000;
+  const isVictory = player.storyProgress >= 4;
 
   useEffect(() => {
     if (isVictory) {
-      setEndingText('你已经赚取了 50000 金币，成为了海洋上最富有的传奇！你买下了一座属于自己的岛屿，安享晚年。史书上永远铭刻着你的名字：一船暴富！');
+      setEndingText('你已经完成所有海域的征服，故事被写进港口传说。新的船长还会继续追逐这片海。');
     } else {
       const randomIndex = Math.floor(Math.random() * BANKRUPT_ENDINGS.length);
       setEndingText(BANKRUPT_ENDINGS[randomIndex]);
@@ -27,8 +27,8 @@ export function GameOverScreen({ player, onRestart }: Props) {
         <div className={styles.crawlText}>
           {isVictory ? (
             <React.Fragment>
-              <h1 style={{ color: '#FFD700' }}>传奇大亨</h1>
-              <p>带着 {player.gold} 金币的巨款，你选择了功成身退。</p>
+              <h1 style={{ color: '#FFD700' }}>四海传奇</h1>
+              <p>带着 {player.gold} 金币和完整海图，你选择了功成身退。</p>
             </React.Fragment>
           ) : (
             <React.Fragment>

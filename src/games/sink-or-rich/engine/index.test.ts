@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage, createDefaultPlayerState, settleArrival, startVoyage } from './index';
-import { SHIPS, ARMORS, CARGO_TYPES, ROUTES } from '../content/data';
+import { SHIPS, ARMORS, CARGO_TYPES, ROUTES, PORTS } from '../content/data';
 import { getStoryStatus } from '../content/story';
 import { clampCasinoPayout } from '../content/casino';
+import { createContractKey, generateLocalContracts } from '../content/contracts';
 
 describe('Game Logic Tests', () => {
   it('should create default player state correctly', () => {
@@ -121,5 +122,37 @@ describe('Game Logic Tests', () => {
 
     const { player: sailingPlayer } = startVoyage(player, route, 'port_tortuga');
     expect(sailingPlayer.casinoProfitThisPort).toBe(0);
+  });
+
+  it('should not unlock the finale from gold alone', () => {
+    const player = createDefaultPlayerState();
+    player.storyProgress = 3;
+    player.storyBranch = 'pirate';
+    player.gold = 50000;
+
+    const status = getStoryStatus(player);
+    expect(status?.canAdvance).toBe(false);
+    expect(status?.objective).toContain('未解锁海域');
+  });
+
+  it('should unlock the finale after all seas, ports, wealth, and the abyss challenge are complete', () => {
+    const player = createDefaultPlayerState();
+    player.storyProgress = 3;
+    player.storyBranch = 'governor';
+    player.gold = 50000;
+    player.unlockedPorts = PORTS.map(port => port.id);
+    player.unlockedRoutes = ROUTES.map(route => route.id);
+    player.discoveredEvents = ['defeated_leviathan'];
+
+    expect(getStoryStatus(player)?.canAdvance).toBe(true);
+  });
+
+  it('should generate contracts without exact duplicates', () => {
+    const currentPort = PORTS.find(port => port.id === 'port_royal')!;
+    const contracts = generateLocalContracts(currentPort, ['port_royal', 'port_tortuga', 'port_oriental'], PORTS, CARGO_TYPES);
+    const keys = contracts.map(createContractKey);
+
+    expect(contracts).toHaveLength(3);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });

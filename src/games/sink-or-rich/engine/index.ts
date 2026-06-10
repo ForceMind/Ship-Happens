@@ -423,6 +423,11 @@ export function resolveCombatTurn(player: PlayerState, voyage: VoyageState, acti
     if (isMonster) newVoyage.monstersDefeated += 1;
     else newVoyage.enemiesDefeated += 1;
 
+    if (enemy.id === 'enemy_leviathan' && !newPlayer.discoveredEvents.includes('defeated_leviathan')) {
+      newPlayer.discoveredEvents = [...newPlayer.discoveredEvents, 'defeated_leviathan'];
+      combatLogs.push('深渊的最终海妖已经沉入海底，所有海域都在传颂你的名字。');
+    }
+
     if (enemy.id === 'enemy_patrol_1') {
       newPlayer.bounty += 30;
       newPlayer.reputation -= 20;

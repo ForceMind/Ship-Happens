@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { PlayerCargo, PlayerState } from '../types';
-import { SHIPS, CREW_MEMBERS, AMMO_TYPES, ARMORS, CARGO_TYPES, PORTS } from '../content/data';
+import { SHIPS, CREW_MEMBERS, AMMO_TYPES, ARMORS, CARGO_TYPES, PORTS, ROUTES } from '../content/data';
 import { getStoryStatus } from '../content/story';
+import { generateLocalContracts } from '../content/contracts';
 import { calculateCargoUsed, calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage } from '../engine';
 import { Modal } from './Modal';
 import styles from './styles.module.css';
@@ -10,13 +11,12 @@ interface Props {
   player: PlayerState;
   setPlayer: (p: PlayerState) => void;
   onGoToRouteSelect: () => void;
-  onRetireVictory: () => void;
   onBankrupt: () => void;
   onGoToCasino: () => void;
   onGoToStory?: () => void;
 }
 
-export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSelect, onRetireVictory, onBankrupt, onGoToCasino, onGoToStory }) => {
+export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSelect, onBankrupt, onGoToCasino, onGoToStory }) => {
   const [activeTab, setActiveTab] = useState<'ship'|'crew'|'ammo'|'armor'|'cargo'|'contract'|'repair'|'bank'|'building'>('ship');
   const [modal, setModal] = useState<{title: string, msg: string, onConfirm: () => void, onCancel?: () => void} | null>(null);
   const [localContracts, setLocalContracts] = useState<import('../types').Contract[]>([]);
@@ -24,34 +24,8 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
   const currentPort = PORTS.find(p => p.id === (player.currentPortId || 'port_royal')) || PORTS[0];
 
   useEffect(() => {
-    const availableDestinations = PORTS.filter(p => p.id !== currentPort.id && player.unlockedPorts.includes(p.id));
-    const localCargoTypes = CARGO_TYPES.filter(c => !c.availableInPorts || c.availableInPorts.includes(currentPort.id));
-
-    // If no available destinations (e.g. only 1 port unlocked and we are in it), fallback to the first port
-    const destinations = availableDestinations.length > 0 ? availableDestinations : PORTS;
-
-    const generated = [1, 2, 3].map(i => {
-      const dest = destinations[Math.floor(Math.random() * destinations.length)];
-      const cargo = localCargoTypes.length > 0 ? localCargoTypes[Math.floor(Math.random() * localCargoTypes.length)] : CARGO_TYPES[0];
-      const amount = Math.floor(Math.random() * 3) + 1;
-      let reward = 300 * amount;
-      if (cargo.riskTag === 'illegal') reward *= 3;
-      if (dest.id === 'port_abyss') reward *= 2;
-
-      return {
-        id: `gen_contract_${Date.now()}_${i}`,
-        name: `运送${cargo.name}至${dest.name}`,
-        requiredCargoName: cargo.name,
-        requiredAmount: amount,
-        reward: reward,
-        penalty: Math.floor(reward * 0.3),
-        requiredReputation: cargo.requiredReputation,
-        destinationPortId: dest.id,
-        destinationPortName: dest.name
-      };
-    });
-    setLocalContracts(generated);
-  }, [currentPort.id]);
+    setLocalContracts(generateLocalContracts(currentPort, player.unlockedPorts, PORTS, CARGO_TYPES));
+  }, [currentPort, player.unlockedPorts]);
 
   const getCargoBuyPrice = (cargoId: string, baseBuyPrice: number) => {
     const multiplier = currentPort.priceMultipliers[cargoId] || 1;
@@ -69,6 +43,26 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
   const repairCost = calculateRepairCost(player);
   const canSail = canStartVoyage(player);
   const storyStatus = getStoryStatus(player);
+  const finaleUnlocked = Boolean(storyStatus?.canAdvance && player.storyProgress === 3);
+  const routeNameById = (routeId: string) => ROUTES.find(route => route.id === routeId)?.name || '未知海域';
+
+  const buyRouteChart = (routeId: string, cost: number, requiredReputation: number, requiredBounty = 0) => {
+    const hasReputation = player.reputation >= requiredReputation;
+    const hasBounty = requiredBounty > 0 && player.bounty >= requiredBounty;
+    if (player.gold >= cost && (hasReputation || hasBounty)) {
+      setPlayer({
+        ...player,
+        gold: player.gold - cost,
+        unlockedRoutes: player.unlockedRoutes.includes(routeId) ? player.unlockedRoutes : [...player.unlockedRoutes, routeId]
+      });
+      setModal({title: '获取海图', msg: `你获得了${routeNameById(routeId)}的航海许可。`, onConfirm: () => setModal(null)});
+    } else {
+      const requirementText = requiredBounty > 0
+        ? `需要 ${cost} 金币，且声望或通缉达到 ${requiredReputation}。`
+        : `需要 ${cost} 金币和 ${requiredReputation} 声望。`;
+      setModal({title: '条件不足', msg: requirementText, onConfirm: () => setModal(null)});
+    }
+  };
 
   const buyShip = (shipId: string) => {
     const ship = SHIPS.find(s => s.id === shipId)!;
@@ -302,18 +296,19 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         <div className={styles.statItem}><span className={styles.statLabel}>债务</span><span className={styles.statValue} style={{color: player.debt > 0 ? '#f44336' : '#fff'}}>💰{player.debt}</span></div>
       </div>
 
-      {player.gold >= 50000 && (
+      {player.storyProgress === 3 && (
         <div className={styles.card} style={{ borderColor: '#FFD700', background: 'rgba(255, 215, 0, 0.1)' }}>
-          <h3 style={{ color: '#FFD700', textAlign: 'center' }}>你已经积累了惊人的财富！</h3>
+          <h3 style={{ color: '#FFD700', textAlign: 'center' }}>终章之路</h3>
           <p style={{ textAlign: 'center', marginBottom: '10px' }}>
-            {player.storyProgress >= 3 ? '主线终章已经开启，是时候把你的旗帜插到最后的海岸。' : '你可以选择激流勇退，也可以先完成上方主线抉择。'}
+            {finaleUnlocked ? '所有海域、港口与深渊挑战都已完成，是时候把你的旗帜插到最后的海岸。' : storyStatus?.objective}
           </p>
           <button
             className={styles.btnPrimary}
             style={{ width: '100%', backgroundColor: '#FFD700', color: '#000' }}
-            onClick={player.storyProgress >= 3 && onGoToStory ? onGoToStory : onRetireVictory}
+            disabled={!finaleUnlocked || !onGoToStory}
+            onClick={onGoToStory}
           >
-            {player.storyProgress >= 3 ? '进入终章 (主线通关)' : '退休：富甲一方 (通关)'}
+            {finaleUnlocked ? '进入终章 (主线通关)' : '终章尚未解锁'}
           </button>
         </div>
       )}
@@ -674,19 +669,21 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 洗刷罪名 (花费 {player.bounty * 100} 金币)
               </button>
 
-              {!player.unlockedRoutes.includes('route_ocean') && (
+              {!player.unlockedRoutes.includes('route_storm') && (
                 <button
                   className={styles.btnPrimary}
-                  onClick={() => {
-                    if (player.gold >= 5000 && player.reputation >= 50) {
-                      setPlayer({...player, gold: player.gold - 5000, unlockedRoutes: [...player.unlockedRoutes, 'route_ocean']});
-                      setModal({title: '获取委任状', msg: '你获得了远洋航线的探索委任状！', onConfirm: () => setModal(null)});
-                    } else {
-                      setModal({title: '条件不足', msg: '需要 5000 金币和 50 声望才能购买远洋委任状。', onConfirm: () => setModal(null)});
-                    }
-                  }}
+                  onClick={() => buyRouteChart('route_storm', 5000, 50)}
                 >
-                  购买大洋航线委任状 (5000金 / 需50声望)
+                  购买暴风航线委任状 (5000金 / 需50声望)
+                </button>
+              )}
+
+              {!player.unlockedRoutes.includes('route_black_tide') && (
+                <button
+                  className={styles.btnPrimary}
+                  onClick={() => buyRouteChart('route_black_tide', 10000, 100)}
+                >
+                  购买黑潮航线海图 (10000金 / 需100声望)
                 </button>
               )}
 
@@ -737,17 +734,19 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 黑市销账假身份 (花费 {player.bounty * 80} 金币)
               </button>
 
+              {!player.unlockedRoutes.includes('route_legend') && (
+                <button
+                  className={styles.btnPrimary}
+                  onClick={() => buyRouteChart('route_legend', 15000, 150, 150)}
+                >
+                  购买传说航线残图 (15000金 / 需150声望或通缉)
+                </button>
+              )}
+
               {!player.unlockedRoutes.includes('route_abyss') && (
                 <button
                   className={styles.btnPrimary}
-                  onClick={() => {
-                    if (player.gold >= 20000 && (player.bounty >= 150 || player.reputation >= 150)) {
-                      setPlayer({...player, gold: player.gold - 20000, unlockedRoutes: [...player.unlockedRoutes, 'route_abyss']});
-                      setModal({title: '获取黑市海图', msg: '你得到了通往深渊死地的禁忌海图！', onConfirm: () => setModal(null)});
-                    } else {
-                      setModal({title: '条件不足', msg: '需要 20000 金币，且通缉值或声望达到 150。', onConfirm: () => setModal(null)});
-                    }
-                  }}
+                  onClick={() => buyRouteChart('route_abyss', 20000, 150, 150)}
                 >
                   购买深渊禁忌海图 (20000金 / 需150声望或通缉)
                 </button>

@@ -190,10 +190,6 @@ export const SinkOrRichGame: React.FC = () => {
           player={player}
           setPlayer={setPlayer}
           onGoToRouteSelect={() => setScreen('route_select')}
-          onRetireVictory={() => {
-            resetGame();
-            setScreen('title');
-          }}
           onBankrupt={() => setScreen('game_over')}
           onGoToCasino={() => setScreen('casino')}
           onGoToStory={() => setShowStory(true)}
@@ -258,6 +254,13 @@ export const SinkOrRichGame: React.FC = () => {
             }
             const update = { ...player, storyProgress: newProgress };
             if (branch) update.storyBranch = branch;
+            const routeUnlocks = new Set(update.unlockedRoutes);
+            if (newProgress >= 2) routeUnlocks.add('route_storm');
+            if (newProgress >= 3) {
+              routeUnlocks.add('route_black_tide');
+              routeUnlocks.add('route_legend');
+            }
+            update.unlockedRoutes = Array.from(routeUnlocks);
             setPlayer(update);
             setShowStory(false);
           }}

@@ -33,16 +33,16 @@ export const StoryScreen: React.FC<Props> = ({ player, onComplete }) => {
       options = [{ text: '戴上它，我就是海盗王！', onClick: () => onComplete(3, 'pirate') }];
     } else if (player.reputation >= 100) {
       title = '第二章：皇家的恩宠';
-      content = '女王陛下听说了你的光辉事迹，特地派人送来了帝国总督的委任状。只要你积累足够的财富买下那座小岛，你就能成为一方诸侯。';
+      content = '女王陛下听说了你的光辉事迹，特地派人送来了帝国委任状。但委任状只是入场券，只有打开所有海域、平定深渊威胁的人，才配真正治理殖民地。';
       options = [{ text: '叩谢皇恩，向总督之路迈进！', onClick: () => onComplete(3, 'governor') }];
     }
   } else if (player.storyProgress === 3) {
     if (player.storyBranch === 'governor') {
       title = '终章：帝国之盾';
-      content = '你买下了加勒比海最美丽的岛屿，并在那里建立了一座坚不可摧的堡垒。女王亲自为你授勋，你从一个破产的倒霉蛋，蜕变为了权倾一时的帝国总督。';
+      content = '你打开了每一条海域，踏遍每一座港口，又从深渊航线带回最终海妖沉没的消息。帝国再也无法把你当成普通商人，女王亲自授予你殖民地总督之印。从今天起，海图上的新秩序由你签署。';
     } else {
       title = '终章：四海之王';
-      content = '你占领了传说的海盗天堂，用大炮轰碎了帝国的无敌舰队。现在，整个加勒比海都飘扬着你的黑旗，你，就是活着的神话——海盗王！';
+      content = '你打开了每一条海域，踏遍每一座港口，又在深渊航线上轰沉了最终海妖。帝国舰队不敢再追，海盗公会把王座推到你面前。现在，整个加勒比海都飘扬着你的黑旗，你就是活着的神话——海盗王！';
     }
     options = [{ text: '激流勇退 (通关)', onClick: () => onComplete(4) }];
   }
