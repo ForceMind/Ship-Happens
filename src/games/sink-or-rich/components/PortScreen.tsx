@@ -3,6 +3,7 @@ import { PlayerCargo, PlayerState } from '../types';
 import { SHIPS, CREW_MEMBERS, AMMO_TYPES, ARMORS, CARGO_TYPES, PORTS, ROUTES } from '../content/data';
 import { getStoryStatus } from '../content/story';
 import { generateLocalContracts } from '../content/contracts';
+import { addStoryFlags, FINALE_STORY_PROGRESS, hasStoryFlag, isRouteUnlockAvailable, isRouteVisible } from '../content/progression';
 import { calculateCargoUsed, calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage } from '../engine';
 import { Modal } from './Modal';
 import styles from './styles.module.css';
@@ -43,12 +44,18 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
   const repairCost = calculateRepairCost(player);
   const canSail = canStartVoyage(player);
   const storyStatus = getStoryStatus(player);
-  const finaleUnlocked = Boolean(storyStatus?.canAdvance && player.storyProgress === 3);
+  const finaleUnlocked = Boolean(storyStatus?.canAdvance && player.storyProgress === FINALE_STORY_PROGRESS);
   const routeNameById = (routeId: string) => ROUTES.find(route => route.id === routeId)?.name || '未知海域';
-  const hasStoryFlag = (flag: string) => player.discoveredEvents.includes(flag);
-  const addStoryFlags = (flags: string[]) => Array.from(new Set([...player.discoveredEvents, ...flags]));
+  const portNameById = (portId: string) => PORTS.find(port => port.id === portId)?.name || '未知港口';
+  const ownsStoryFlag = (flag: string) => hasStoryFlag(player, flag);
+  const withStoryFlags = (flags: string[]) => addStoryFlags(player, flags);
 
   const buyRouteChart = (routeId: string, cost: number, requiredReputation: number, requiredBounty = 0) => {
+    if (!isRouteVisible(player, routeId) || !isRouteUnlockAvailable(player, routeId)) {
+      setModal({title: '海图未现', msg: '这片海域还没有出现在你的主线海图上，继续推进主线剧情。', onConfirm: () => setModal(null)});
+      return;
+    }
+
     const hasReputation = player.reputation >= requiredReputation;
     const hasBounty = requiredBounty > 0 && player.bounty >= requiredBounty;
     if (player.gold >= cost && (hasReputation || hasBounty)) {
@@ -66,10 +73,44 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
     }
   };
 
+  const buyPortPass = (portId: string, cost: number, requiredReputation: number, requiredBounty = 0) => {
+    const hasReputation = player.reputation >= requiredReputation;
+    const hasBounty = requiredBounty > 0 && player.bounty >= requiredBounty;
+    if (player.gold >= cost && (hasReputation || hasBounty)) {
+      setPlayer({
+        ...player,
+        gold: player.gold - cost,
+        unlockedPorts: player.unlockedPorts.includes(portId) ? player.unlockedPorts : [...player.unlockedPorts, portId]
+      });
+      setModal({title: '港口许可', msg: `你取得了${portNameById(portId)}的长期停靠权。`, onConfirm: () => setModal(null)});
+    } else {
+      const requirementText = requiredBounty > 0
+        ? `需要 ${cost} 金币，且声望或通缉达到 ${requiredReputation}。`
+        : `需要 ${cost} 金币和 ${requiredReputation} 声望。`;
+      setModal({title: '条件不足', msg: requirementText, onConfirm: () => setModal(null)});
+    }
+  };
+
+  const doAzoresOverhaul = () => {
+    const max = calculateMaxHull(player.currentShip, player.ownedArmor);
+    const missingHull = Math.max(0, max - player.currentHull);
+    const cost = Math.floor(missingHull * calculateRepairUnitCost(player) * 0.75);
+    if (!player.currentShip || missingHull === 0) {
+      setModal({title: '无需整备', msg: '你的船已经处于良好状态。', onConfirm: () => setModal(null)});
+      return;
+    }
+    if (player.gold < cost) {
+      setModal({title: '余额不足', msg: `远洋整备需要 ${cost} 金币。`, onConfirm: () => setModal(null)});
+      return;
+    }
+    setPlayer({...player, gold: player.gold - cost, currentHull: max});
+    setModal({title: '远洋整备完成', msg: `亚速尔船坞用 ${cost} 金币把你的船整备到满耐久。`, onConfirm: () => setModal(null)});
+  };
+
   const acceptQueenMission = () => {
     setPlayer({
       ...player,
-      discoveredEvents: addStoryFlags(['queen_mission_accepted']),
+      discoveredEvents: withStoryFlags(['queen_mission_accepted']),
       unlockedPorts: player.unlockedPorts.includes('port_oriental') ? player.unlockedPorts : [...player.unlockedPorts, 'port_oriental']
     });
     setModal({
@@ -84,7 +125,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
       ...player,
       gold: player.gold + 5000,
       reputation: player.reputation + 50,
-      discoveredEvents: addStoryFlags(['queen_mission_completed'])
+      discoveredEvents: withStoryFlags(['queen_mission_completed'])
     });
     setModal({
       title: '敕令送达',
@@ -96,8 +137,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
   const acceptPirateTreasureHunt = () => {
     setPlayer({
       ...player,
-      discoveredEvents: addStoryFlags(['pirate_treasure_clue']),
-      unlockedRoutes: player.unlockedRoutes.includes('route_legend') ? player.unlockedRoutes : [...player.unlockedRoutes, 'route_legend']
+      discoveredEvents: withStoryFlags(['pirate_treasure_clue'])
     });
     setModal({
       title: '海盗王藏宝图',
@@ -111,7 +151,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
       ...player,
       gold: player.gold + 8000,
       bounty: player.bounty + 50,
-      discoveredEvents: addStoryFlags(['pirate_treasure_found'])
+      discoveredEvents: withStoryFlags(['pirate_treasure_found'])
     });
     setModal({
       title: '宝藏现世',
@@ -352,7 +392,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         <div className={styles.statItem}><span className={styles.statLabel}>债务</span><span className={styles.statValue} style={{color: player.debt > 0 ? '#f44336' : '#fff'}}>💰{player.debt}</span></div>
       </div>
 
-      {player.storyProgress === 3 && (
+      {player.storyProgress === FINALE_STORY_PROGRESS && (
         <div className={styles.card} style={{ borderColor: '#FFD700', background: 'rgba(255, 215, 0, 0.1)' }}>
           <h3 style={{ color: '#FFD700', textAlign: 'center' }}>终章之路</h3>
           <p style={{ textAlign: 'center', marginBottom: '10px' }}>
@@ -725,7 +765,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 洗刷罪名 (花费 {player.bounty * 100} 金币)
               </button>
 
-              {!player.unlockedRoutes.includes('route_storm') && (
+              {isRouteVisible(player, 'route_storm') && isRouteUnlockAvailable(player, 'route_storm') && !player.unlockedRoutes.includes('route_storm') && (
                 <button
                   className={styles.btnPrimary}
                   onClick={() => buyRouteChart('route_storm', 5000, 50)}
@@ -734,7 +774,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 </button>
               )}
 
-              {!player.unlockedRoutes.includes('route_black_tide') && (
+              {isRouteVisible(player, 'route_black_tide') && isRouteUnlockAvailable(player, 'route_black_tide') && !player.unlockedRoutes.includes('route_black_tide') && (
                 <button
                   className={styles.btnPrimary}
                   onClick={() => buyRouteChart('route_black_tide', 10000, 100)}
@@ -743,7 +783,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 </button>
               )}
 
-              {player.storyProgress === 3 && player.storyBranch === 'governor' && !hasStoryFlag('queen_mission_accepted') && (
+              {player.storyProgress === 4 && player.storyBranch === 'governor' && !ownsStoryFlag('queen_mission_accepted') && (
                 <button
                   className={styles.btnPrimary}
                   style={{ backgroundColor: '#FFD700', color: '#000' }}
@@ -770,7 +810,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 </button>
               )}
 
-              {storyStatus?.canAdvance && player.storyProgress > 0 && player.storyProgress < 3 && onGoToStory && (
+              {storyStatus?.canAdvance && player.storyProgress > 0 && player.storyProgress < 4 && onGoToStory && (
                 <button className={styles.btnPrimary} style={{ backgroundColor: '#FFD700', color: '#000' }} onClick={onGoToStory}>
                   继续主线：面见帝国海军上将
                 </button>
@@ -800,7 +840,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 黑市销账假身份 (花费 {player.bounty * 80} 金币)
               </button>
 
-              {!player.unlockedRoutes.includes('route_legend') && (
+              {isRouteVisible(player, 'route_legend') && isRouteUnlockAvailable(player, 'route_legend') && !player.unlockedRoutes.includes('route_legend') && (
                 <button
                   className={styles.btnPrimary}
                   onClick={() => buyRouteChart('route_legend', 15000, 150, 150)}
@@ -809,7 +849,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 </button>
               )}
 
-              {!player.unlockedRoutes.includes('route_abyss') && (
+              {isRouteVisible(player, 'route_abyss') && isRouteUnlockAvailable(player, 'route_abyss') && !player.unlockedRoutes.includes('route_abyss') && (
                 <button
                   className={styles.btnPrimary}
                   onClick={() => buyRouteChart('route_abyss', 20000, 150, 150)}
@@ -818,7 +858,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 </button>
               )}
 
-              {player.storyProgress === 3 && player.storyBranch === 'pirate' && !hasStoryFlag('pirate_treasure_clue') && (
+              {player.storyProgress === 4 && player.storyBranch === 'pirate' && !ownsStoryFlag('pirate_treasure_clue') && (
                 <button
                   className={styles.btnPrimary}
                   style={{ backgroundColor: '#FFD700', color: '#000' }}
@@ -828,9 +868,49 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 </button>
               )}
 
-              {storyStatus?.canAdvance && player.storyProgress > 0 && player.storyProgress < 3 && onGoToStory && (
+              {storyStatus?.canAdvance && player.storyProgress > 0 && player.storyProgress < 4 && onGoToStory && (
                 <button className={styles.btnPrimary} style={{ backgroundColor: '#FFD700', color: '#000' }} onClick={onGoToStory}>
                   继续主线：拜会海盗王
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'building' && player.currentPortId === 'port_nassau' && (
+          <div className={styles.card} style={{ borderColor: '#2ecc71' }}>
+            <h3 style={{ color: '#2ecc71', textAlign: 'center', marginBottom: '20px' }}>自由港航海会</h3>
+            <p style={{ textAlign: 'center', color: '#ccc' }}>这里的私掠船长会交换礁盘、水道和补给岛位置。没人问你效忠谁，只问你敢不敢开新航线。</p>
+            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {isRouteVisible(player, 'route_coral') && isRouteUnlockAvailable(player, 'route_coral') && !player.unlockedRoutes.includes('route_coral') && (
+                <button className={styles.btnPrimary} onClick={() => buyRouteChart('route_coral', 12000, 80, 80)}>
+                  购买珊瑚群岛水道图 (12000金 / 需80声望或通缉)
+                </button>
+              )}
+
+              {!player.unlockedPorts.includes('port_azores') && player.storyProgress >= 5 && (
+                <button className={styles.btnPrimary} onClick={() => buyPortPass('port_azores', 9000, 100)}>
+                  签订亚速尔补给契约 (9000金 / 需100声望)
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'building' && player.currentPortId === 'port_cartagena' && (
+          <div className={styles.card} style={{ borderColor: '#b8860b' }}>
+            <h3 style={{ color: '#b8860b', textAlign: 'center', marginBottom: '20px' }}>要塞军需处</h3>
+            <p style={{ textAlign: 'center', color: '#ccc' }}>帝国军需官掌握远洋炮舰的季风记录。帮他们跑通黑潮之后，他们才会把下一段航线交出来。</p>
+            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {isRouteVisible(player, 'route_monsoon') && isRouteUnlockAvailable(player, 'route_monsoon') && !player.unlockedRoutes.includes('route_monsoon') && (
+                <button className={styles.btnPrimary} onClick={() => buyRouteChart('route_monsoon', 14000, 120)}>
+                  购买季风远洋航线档案 (14000金 / 需120声望)
+                </button>
+              )}
+
+              {!player.unlockedPorts.includes('port_azores') && player.storyProgress >= 5 && (
+                <button className={styles.btnPrimary} onClick={() => buyPortPass('port_azores', 9000, 100)}>
+                  申请亚速尔军需补给权 (9000金 / 需100声望)
                 </button>
               )}
             </div>
@@ -850,7 +930,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 大宗秘宝盲盒 (2000金 / 需3舱位)
               </button>
 
-              {player.storyProgress === 3 && player.storyBranch === 'governor' && hasStoryFlag('queen_mission_accepted') && !hasStoryFlag('queen_mission_completed') && (
+              {player.storyProgress === 4 && player.storyBranch === 'governor' && ownsStoryFlag('queen_mission_accepted') && !ownsStoryFlag('queen_mission_completed') && (
                 <button
                   className={styles.btnPrimary}
                   style={{ backgroundColor: '#FFD700', color: '#000' }}
@@ -860,13 +940,45 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 </button>
               )}
 
-              {player.storyProgress === 3 && player.storyBranch === 'pirate' && hasStoryFlag('pirate_treasure_clue') && !hasStoryFlag('pirate_treasure_found') && (
+              {player.storyProgress === 4 && player.storyBranch === 'pirate' && ownsStoryFlag('pirate_treasure_clue') && !ownsStoryFlag('pirate_treasure_found') && (
                 <button
                   className={styles.btnPrimary}
                   style={{ backgroundColor: '#FFD700', color: '#000' }}
                   onClick={completePirateTreasureHunt}
                 >
                   搜寻海盗王宝藏
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'building' && player.currentPortId === 'port_azores' && (
+          <div className={styles.card} style={{ borderColor: '#03a9f4' }}>
+            <h3 style={{ color: '#03a9f4', textAlign: 'center', marginBottom: '20px' }}>远洋补给站</h3>
+            <p style={{ textAlign: 'center', color: '#ccc' }}>亚速尔是远征前的最后可靠船坞。船体、淡水和药品都能在这里补齐。</p>
+            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <button className={styles.btnPrimary} disabled={!player.currentShip} onClick={doAzoresOverhaul}>
+                远洋整备 (按缺失耐久 75% 收费)
+              </button>
+
+              {isRouteVisible(player, 'route_legend') && isRouteUnlockAvailable(player, 'route_legend') && !player.unlockedRoutes.includes('route_legend') && (
+                <button className={styles.btnPrimary} onClick={() => buyRouteChart('route_legend', 15000, 150, 150)}>
+                  拼合传说航线星图 (15000金 / 需150声望或通缉)
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'building' && player.currentPortId === 'port_madagascar' && (
+          <div className={styles.card} style={{ borderColor: '#ff5722' }}>
+            <h3 style={{ color: '#ff5722', textAlign: 'center', marginBottom: '20px' }}>海盗王旧寨</h3>
+            <p style={{ textAlign: 'center', color: '#ccc' }}>旧寨的石墙上刻着深渊海图的最后一段。走到这里的人，已经没有近海退路。</p>
+            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {isRouteVisible(player, 'route_abyss') && isRouteUnlockAvailable(player, 'route_abyss') && !player.unlockedRoutes.includes('route_abyss') && (
+                <button className={styles.btnPrimary} onClick={() => buyRouteChart('route_abyss', 20000, 150, 150)}>
+                  取走深渊最终海图 (20000金 / 需150声望或通缉)
                 </button>
               )}
             </div>

@@ -14,6 +14,7 @@ import { CasinoScreen } from './components/CasinoScreen';
 import { StoryScreen } from './components/StoryScreen';
 import { VersionBadge } from './components/VersionBadge';
 import { canAdvanceStory } from './content/story';
+import { applyStoryUnlocks, FINAL_STORY_PROGRESS } from './content/progression';
 
 type AppScreen = 'title' | 'port' | 'route_select' | 'voyage' | 'combat' | 'settlement' | 'game_over' | 'casino';
 
@@ -246,21 +247,14 @@ export const SinkOrRichGame: React.FC = () => {
         <StoryScreen
           player={player}
           onComplete={(newProgress, branch) => {
-            if (newProgress === 4) {
+            if (newProgress === FINAL_STORY_PROGRESS) {
               resetGame();
               setScreen('title');
               setShowStory(false);
               return;
             }
-            const update = { ...player, storyProgress: newProgress };
+            let update = applyStoryUnlocks(player, newProgress);
             if (branch) update.storyBranch = branch;
-            const routeUnlocks = new Set(update.unlockedRoutes);
-            if (newProgress >= 2) routeUnlocks.add('route_storm');
-            if (newProgress >= 3) {
-              routeUnlocks.add('route_black_tide');
-              routeUnlocks.add('route_legend');
-            }
-            update.unlockedRoutes = Array.from(routeUnlocks);
             setPlayer(update);
             setShowStory(false);
           }}

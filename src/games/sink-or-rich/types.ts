@@ -146,7 +146,7 @@ export interface PlayerState {
   activeContract: Contract | null;
   rescuedByGuild: boolean; // used for the 300 gold rescue
   debt: number;
-  storyProgress: number; // 0 = start, 1 = first 10000 gold, 2 = path chosen, 3 = finale
+  storyProgress: number; // Main quest chapter index. Final playable chapter is defined in progression.ts.
   storyBranch?: 'pirate' | 'governor';
   unlockedRoutes: string[];
   unlockedPorts: string[];

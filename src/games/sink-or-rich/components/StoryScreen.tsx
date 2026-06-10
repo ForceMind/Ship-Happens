@@ -1,5 +1,6 @@
 import React from 'react';
 import { PlayerState } from '../types';
+import { FINAL_STORY_PROGRESS, FINALE_STORY_PROGRESS } from '../content/progression';
 
 interface Props {
   player: PlayerState;
@@ -16,27 +17,44 @@ export const StoryScreen: React.FC<Props> = ({ player, onComplete }) => {
     content = '海风中夹杂着朗姆酒的酸臭味，你在一间破旧的酒馆中醒来。你的船队在昨夜的风暴中沉没，不仅血本无归，还欠下了商会一屁股债。然而，大海的呼唤从未停止。这是你东山再起的最后机会。';
     options = [{ text: '升起风帆！', onClick: () => onComplete(1) }];
   } else if (player.storyProgress === 1) {
-    title = '第一章：崭露头角';
-    content = '你已经积累了超过 10,000 金币，名字开始在各大港口流传。商会的代理人对你刮目相看，而一些黑暗角落里的眼睛也开始注视你。你需要更加小心。';
+    title = '第一章：近海试航';
+    content = '你完成了第一趟近海航行。账本上的利润不算惊人，但水手们重新相信你的判断，拿骚自由港也愿意让你的船靠岸补给。真正的开拓从下一张风暴海图开始。';
     options = [{ text: '名利场，我来了。', onClick: () => onComplete(2) }];
   } else if (player.storyProgress === 2) {
+    title = '第二章：暴风委任';
+    content = '你把暴风航线的航海日志交给总督府。卡塔赫纳要塞港派来军需官，黑潮航线的前哨情报也摆上桌面。要继续扩张，你必须穿过那片吞船的黑水。';
+    options = [{ text: '打开黑潮海图。', onClick: () => onComplete(3) }];
+  } else if (player.storyProgress === 3) {
     if (player.bounty >= 100 && player.reputation >= 100) {
-      title = '第二章：命运的抉择';
+      title = '第三章：命运的抉择';
       content = '你的名声和恶名都达到了顶峰！帝国海军和海盗公会都派人送来了密信。帝国希望你接下女王远东敕令，成为私掠船长并最终升任总督；海盗们则把半张藏宝图交给你，等你找到海盗王遗藏后带领他们抗击帝国。';
       options = [
-        { text: '接受招安，成为帝国总督！(走白道)', onClick: () => onComplete(3, 'governor') },
-        { text: '去他妈的帝国，老子要当海盗王！(走黑道)', onClick: () => onComplete(3, 'pirate') }
+        { text: '接受招安，成为帝国总督！(走白道)', onClick: () => onComplete(4, 'governor') },
+        { text: '去他妈的帝国，老子要当海盗王！(走黑道)', onClick: () => onComplete(4, 'pirate') }
       ];
     } else if (player.bounty >= 100) {
-      title = '第二章：黑色通缉令';
+      title = '第三章：黑色通缉令';
       content = '你已经被帝国列为头号通缉犯，但海盗们却视你为英雄。海盗公会的使者单膝跪地，向你献上海盗王冠的碎片，并告诉你真正的王冠还藏在传说航线尽头。';
-      options = [{ text: '戴上它，我就是海盗王！', onClick: () => onComplete(3, 'pirate') }];
+      options = [{ text: '戴上它，我就是海盗王！', onClick: () => onComplete(4, 'pirate') }];
     } else if (player.reputation >= 100) {
-      title = '第二章：皇家的恩宠';
+      title = '第三章：皇家的恩宠';
       content = '女王陛下听说了你的光辉事迹，特地派人送来了帝国委任状。但委任状只是入场券，你还必须在总督府接下女王远东敕令，打开所有海域、平定深渊威胁，才配真正治理殖民地。';
-      options = [{ text: '叩谢皇恩，向总督之路迈进！', onClick: () => onComplete(3, 'governor') }];
+      options = [{ text: '叩谢皇恩，向总督之路迈进！', onClick: () => onComplete(4, 'governor') }];
     }
-  } else if (player.storyProgress === 3) {
+  } else if (player.storyProgress === 4) {
+    if (player.storyBranch === 'governor') {
+      title = '第四章：女王远东敕令';
+      content = '敕令送达东方明珠港后，远东商会承认了你的旗帜。帝国给你合法名义，东方给你补给窗口，下一步是把补给链铺到真正的远洋。';
+    } else {
+      title = '第四章：海盗王的遗藏';
+      content = '你找到的不是一箱金币那么简单，而是一套旧海盗王留下的远洋补给暗号。只要把这些暗号串起来，传说航线就不再只是传说。';
+    }
+    options = [{ text: '展开远洋补给线。', onClick: () => onComplete(5) }];
+  } else if (player.storyProgress === 5) {
+    title = '第五章：远洋补给链';
+    content = '珊瑚群岛、季风远洋和传说航线终于被连成一条完整补给链。现在所有港口都在你的海图上，深渊航线也不再是酒馆里的疯话。最后一战会决定你是海盗王，还是殖民地总督。';
+    options = [{ text: '开启深渊远征。', onClick: () => onComplete(FINALE_STORY_PROGRESS) }];
+  } else if (player.storyProgress === FINALE_STORY_PROGRESS) {
     if (player.storyBranch === 'governor') {
       title = '终章：帝国之盾';
       content = '你打开了每一条海域，踏遍每一座港口，又从深渊航线带回最终海妖沉没的消息。帝国再也无法把你当成普通商人，女王亲自授予你殖民地总督之印。从今天起，海图上的新秩序由你签署。';
@@ -44,7 +62,7 @@ export const StoryScreen: React.FC<Props> = ({ player, onComplete }) => {
       title = '终章：四海之王';
       content = '你打开了每一条海域，踏遍每一座港口，又在深渊航线上轰沉了最终海妖。帝国舰队不敢再追，海盗公会把王座推到你面前。现在，整个加勒比海都飘扬着你的黑旗，你就是活着的神话——海盗王！';
     }
-    options = [{ text: '激流勇退 (通关)', onClick: () => onComplete(4) }];
+    options = [{ text: '激流勇退 (通关)', onClick: () => onComplete(FINAL_STORY_PROGRESS) }];
   }
 
   // Fallback for unexpected states

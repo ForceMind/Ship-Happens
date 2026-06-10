@@ -1,6 +1,7 @@
 import { PlayerState, VoyageState } from './types';
 import { createDefaultPlayerState } from './engine';
 import { SHIPS } from './content/data';
+import { applyStoryUnlocks } from './content/progression';
 
 const STORAGE_KEY_PLAYER = 'sink_or_rich_player_v1';
 const STORAGE_KEY_VOYAGE = 'sink_or_rich_voyage_v1';
@@ -45,6 +46,10 @@ export function loadGame(): { player: PlayerState; voyage: VoyageState | null } 
       if (player.storyBranch !== 'pirate' && player.storyBranch !== 'governor') {
         delete player.storyBranch;
       }
+      if (player.storyProgress === 3 && player.storyBranch) {
+        player.storyProgress = 4;
+      }
+      player = applyStoryUnlocks(player, player.storyProgress);
       if (player.currentShip) {
         const canonicalShip = SHIPS.find(s => s.id === player.currentShip.id);
         if (canonicalShip) {

@@ -1,6 +1,7 @@
 import { PlayerState, VoyageState, Route, Enemy, CombatState, Ship, Armor, VoyageMode } from '../types';
 import { GAME_EVENTS } from '../content/events';
 import { ENEMIES, CARGO_TYPES, SHIPS } from '../content/data';
+import { addStoryFlags } from '../content/progression';
 
 export function createDefaultPlayerState(): PlayerState {
   return {
@@ -475,6 +476,10 @@ export function settleArrival(player: import('../types').PlayerState, voyage: im
 
   // Set market multiplier based on the route taken
   p.marketMultiplier = voyage.route ? voyage.route.tradeMultiplier : 1.0;
+  p.discoveredEvents = addStoryFlags(p, [
+    `visited_${voyage.destinationPortId}`,
+    ...(voyage.route ? [`sailed_${voyage.route.id}`] : [])
+  ]);
   if (p.marketMultiplier > 1) {
     msg.push(`穿越高风险航线，当前港口商会对此行货物开出 ${p.marketMultiplier} 倍高价收购！`);
   }

@@ -4,6 +4,7 @@ import { SHIPS, ARMORS, CARGO_TYPES, ROUTES, PORTS } from '../content/data';
 import { getStoryStatus } from '../content/story';
 import { clampCasinoPayout } from '../content/casino';
 import { createContractKey, generateLocalContracts } from '../content/contracts';
+import { applyStoryUnlocks, FINALE_STORY_PROGRESS, getVisibleRoutes } from '../content/progression';
 
 describe('Game Logic Tests', () => {
   it('should create default player state correctly', () => {
@@ -96,6 +97,8 @@ describe('Game Logic Tests', () => {
     expect(settledPlayer.currentPortId).toBe('port_royal');
     expect(settledPlayer.gold).toBe(1123);
     expect(settledPlayer.cargo.map(c => c.uid)).toEqual(['cargo_silk_test', 'loot_jewelry_test']);
+    expect(settledPlayer.discoveredEvents).toContain('visited_port_royal');
+    expect(settledPlayer.discoveredEvents).toContain('sailed_route_coastal');
   });
 
   it('should treat legacy saves without story progress as the prologue', () => {
@@ -126,7 +129,7 @@ describe('Game Logic Tests', () => {
 
   it('should not unlock the finale from gold alone', () => {
     const player = createDefaultPlayerState();
-    player.storyProgress = 3;
+    player.storyProgress = FINALE_STORY_PROGRESS;
     player.storyBranch = 'pirate';
     player.gold = 50000;
 
@@ -137,7 +140,7 @@ describe('Game Logic Tests', () => {
 
   it('should unlock the finale after all seas, ports, wealth, and the abyss challenge are complete', () => {
     const player = createDefaultPlayerState();
-    player.storyProgress = 3;
+    player.storyProgress = FINALE_STORY_PROGRESS;
     player.storyBranch = 'governor';
     player.gold = 50000;
     player.unlockedPorts = PORTS.map(port => port.id);
@@ -152,7 +155,7 @@ describe('Game Logic Tests', () => {
 
   it('should require the pirate treasure hunt for the pirate finale', () => {
     const player = createDefaultPlayerState();
-    player.storyProgress = 3;
+    player.storyProgress = FINALE_STORY_PROGRESS;
     player.storyBranch = 'pirate';
     player.gold = 50000;
     player.unlockedPorts = PORTS.map(port => port.id);
@@ -163,6 +166,40 @@ describe('Game Logic Tests', () => {
 
     player.discoveredEvents.push('pirate_treasure_found');
     expect(getStoryStatus(player)?.canAdvance).toBe(true);
+  });
+
+  it('should reveal routes gradually through story progress', () => {
+    const player = createDefaultPlayerState();
+
+    expect(getVisibleRoutes(player).map(route => route.id)).toEqual([
+      'route_coastal',
+      'route_storm',
+      'route_black_tide'
+    ]);
+
+    player.storyProgress = 3;
+    expect(getVisibleRoutes(player).map(route => route.id)).toContain('route_coral');
+    expect(getVisibleRoutes(player).map(route => route.id)).not.toContain('route_monsoon');
+  });
+
+  it('should apply story route and port unlocks without losing existing state', () => {
+    const player = createDefaultPlayerState();
+    player.unlockedRoutes = ['route_coastal'];
+    player.unlockedPorts = ['port_royal', 'port_tortuga'];
+
+    const updated = applyStoryUnlocks(player, 5);
+
+    expect(updated.unlockedRoutes).toEqual([
+      'route_coastal',
+      'route_storm',
+      'route_black_tide',
+      'route_coral',
+      'route_monsoon',
+      'route_legend'
+    ]);
+    expect(updated.unlockedPorts).toContain('port_nassau');
+    expect(updated.unlockedPorts).toContain('port_azores');
+    expect(updated.unlockedPorts).not.toContain('port_madagascar');
   });
 
   it('should generate contracts without exact duplicates', () => {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styles from './styles.module.css';
 import { PlayerState } from '../types';
 import { BANKRUPT_ENDINGS } from '../content/endings';
+import { FINAL_STORY_PROGRESS } from '../content/progression';
 
 interface Props {
   player: PlayerState;
@@ -10,7 +11,7 @@ interface Props {
 
 export function GameOverScreen({ player, onRestart }: Props) {
   const [endingText, setEndingText] = useState('');
-  const isVictory = player.storyProgress >= 4;
+  const isVictory = player.storyProgress >= FINAL_STORY_PROGRESS;
 
   useEffect(() => {
     if (isVictory) {
