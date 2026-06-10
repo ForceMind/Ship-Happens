@@ -1,7 +1,32 @@
-import { PlayerState, VoyageState, Route, Enemy, CombatState, Ship, Armor, VoyageMode } from '../types';
+import { PlayerState, VoyageState, Route, Enemy, CombatState, Ship, Armor, VoyageMode, SeaEntityType, SeaEntity } from '../types';
 import { GAME_EVENTS } from '../content/events';
 import { ENEMIES, CARGO_TYPES, SHIPS } from '../content/data';
 import { addStoryFlags } from '../content/progression';
+
+const FORCED_EVENT_IDS = new Set(['event_leviathan', 'event_debt_collector']);
+
+function getEventEntityType(eventId: string): SeaEntityType {
+  if (eventId === 'event_storm') return 'storm';
+  if (eventId === 'event_reef') return 'reef';
+  if (eventId === 'event_floating_cargo') return 'cargo';
+  if (eventId === 'event_damaged_merchant') return 'merchant';
+  if (eventId === 'event_pirate_block') return 'pirate';
+  if (eventId === 'event_giant_octopus') return 'monster';
+  if (eventId === 'event_sea_serpent') return 'monster';
+  if (eventId === 'event_white_whale') return 'monster';
+  if (eventId === 'event_patrol') return 'patrol';
+  if (eventId === 'event_island') return 'island';
+  if (eventId === 'event_black_market') return 'black_market';
+  if (eventId === 'event_siren') return 'siren';
+  if (eventId === 'event_bottle') return 'cargo';
+  if (eventId === 'event_mutiny') return 'merchant';
+  if (eventId === 'event_ghost_fog') return 'storm';
+  if (eventId === 'event_blockade') return 'patrol';
+  if (eventId === 'event_whirlpool') return 'reef';
+  if (eventId === 'event_leviathan') return 'monster';
+  if (eventId === 'event_debt_collector') return 'patrol';
+  return 'cargo';
+}
 
 export function createDefaultPlayerState(): PlayerState {
   return {
@@ -96,35 +121,24 @@ export function startVoyage(player: PlayerState, route: Route, destinationPortId
   const mapWidth = 800;
   const mapHeight = route.totalNodes * 400 + 600; // e.g. 5 nodes = 2600 height
 
-  const entities: typeof GAME_EVENTS[0]['id'][] = [];
   // Generate entities based on route risk
   const entityCount = Math.floor(route.totalNodes * route.riskMultiplier * 1.5);
-  const generatedEntities = [];
+  const generatedEntities: SeaEntity[] = [];
+  let hasMonsterEntity = false;
 
   for (let i = 0; i < entityCount; i++) {
-    const event = GAME_EVENTS[Math.floor(Math.random() * GAME_EVENTS.length)];
-    let type = 'cargo';
-    if (event.id === 'event_storm') type = 'storm';
-    if (event.id === 'event_reef') type = 'reef';
-    if (event.id === 'event_floating_cargo') type = 'cargo';
-    if (event.id === 'event_damaged_merchant') type = 'merchant';
-    if (event.id === 'event_pirate_block') type = 'pirate';
-    if (event.id === 'event_giant_octopus') type = 'monster';
-    if (event.id === 'event_patrol') type = 'patrol';
-    if (event.id === 'event_island') type = 'island';
-    if (event.id === 'event_black_market') type = 'black_market';
-    if (event.id === 'event_siren') type = 'siren';
-    if (event.id === 'event_bottle') type = 'cargo';
-    if (event.id === 'event_mutiny') type = 'merchant';
-    if (event.id === 'event_ghost_fog') type = 'storm';
-    if (event.id === 'event_blockade') type = 'patrol';
-    if (event.id === 'event_whirlpool') type = 'reef';
-    if (event.id === 'event_leviathan') type = 'monster';
-    if (event.id === 'event_debt_collector') type = 'patrol';
+    const eventPool = GAME_EVENTS.filter(event => {
+      if (FORCED_EVENT_IDS.has(event.id)) return false;
+      const type = getEventEntityType(event.id);
+      return !(hasMonsterEntity && type === 'monster');
+    });
+    const event = eventPool[Math.floor(Math.random() * eventPool.length)];
+    const type = getEventEntityType(event.id);
+    if (type === 'monster') hasMonsterEntity = true;
 
     generatedEntities.push({
       id: `entity_${i}_${Date.now()}`,
-      type: type as any,
+      type,
       x: Math.floor(Math.random() * (mapWidth - 100)) + 50,
       y: Math.floor(Math.random() * (mapHeight - 600)) + 200, // keep start and end clear
       radius: type === 'storm' || type === 'reef' || type === 'siren' ? 80 : 40,
@@ -135,6 +149,8 @@ export function startVoyage(player: PlayerState, route: Route, destinationPortId
 
   // Force spawn Leviathan if it's the abyss route
   if (route.id === 'route_abyss') {
+    generatedEntities.splice(0, generatedEntities.length, ...generatedEntities.filter(entity => entity.type !== 'monster'));
+    hasMonsterEntity = true;
     generatedEntities.push({
       id: `entity_boss_${Date.now()}`,
       type: 'monster',
@@ -421,11 +437,19 @@ export function resolveCombatTurn(player: PlayerState, voyage: VoyageState, acti
       combatLogs.push(`获得了战利品: ${randomCargo.name}。`);
     }
 
-    if (isMonster) newVoyage.monstersDefeated += 1;
-    else newVoyage.enemiesDefeated += 1;
+    if (isMonster) {
+      newVoyage.monstersDefeated += 1;
+      if (enemy.id !== 'enemy_leviathan') {
+        newPlayer.reputation += 15;
+        newPlayer.discoveredEvents = addStoryFlags(newPlayer, [`monster_trophy_${enemy.id}`]);
+        combatLogs.push(`带回了${enemy.name}的证据，远洋补给线更相信你的海图。声望 +15。`);
+      }
+    } else {
+      newVoyage.enemiesDefeated += 1;
+    }
 
     if (enemy.id === 'enemy_leviathan' && !newPlayer.discoveredEvents.includes('defeated_leviathan')) {
-      newPlayer.discoveredEvents = [...newPlayer.discoveredEvents, 'defeated_leviathan'];
+      newPlayer.discoveredEvents = addStoryFlags(newPlayer, ['defeated_leviathan']);
       combatLogs.push('深渊的最终海妖已经沉入海底，所有海域都在传颂你的名字。');
     }
 

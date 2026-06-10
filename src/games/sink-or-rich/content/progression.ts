@@ -22,6 +22,13 @@ const STORY_PORT_UNLOCKS: Record<number, string[]> = {
   6: ['port_madagascar'],
 };
 
+export const SEA_MONSTER_PROOF_FLAGS = [
+  'monster_trophy_enemy_monster_1',
+  'monster_trophy_enemy_sea_serpent',
+  'monster_trophy_enemy_white_whale',
+  'monster_trophy_enemy_monster_2',
+];
+
 export function normalizeStoryProgress(player: Pick<PlayerState, 'storyProgress'>): number {
   return Number.isFinite(player.storyProgress) ? player.storyProgress : 0;
 }
@@ -73,4 +80,8 @@ export function hasStoryFlag(player: Pick<PlayerState, 'discoveredEvents'>, flag
 
 export function addStoryFlags(player: Pick<PlayerState, 'discoveredEvents'>, flags: string[]): string[] {
   return Array.from(new Set([...player.discoveredEvents, ...flags]));
+}
+
+export function hasSeaMonsterProof(player: Pick<PlayerState, 'discoveredEvents'>): boolean {
+  return SEA_MONSTER_PROOF_FLAGS.some(flag => player.discoveredEvents.includes(flag));
 }

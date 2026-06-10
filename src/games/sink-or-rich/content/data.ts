@@ -256,6 +256,8 @@ export const ENEMIES: Enemy[] = [
   { id: 'enemy_pirate_1', name: '海盗船', maxHp: 60, attack: 12, rewardGold: 180, type: 'pirate', description: '一艘挂着黑旗的武装船只' },
   { id: 'enemy_pirate_2', name: '强盗快船', maxHp: 45, attack: 10, rewardGold: 140, type: 'pirate', description: '速度很快的小型海盗船' },
   { id: 'enemy_monster_1', name: '巨型章鱼', maxHp: 90, attack: 16, rewardGold: 300, type: 'monster', description: '潜伏在深海的恐怖巨兽' },
+  { id: 'enemy_sea_serpent', name: '黑潮海蛇', maxHp: 130, attack: 22, rewardGold: 450, type: 'monster', description: '沿着黑潮迁徙的长身海怪，鳞片能证明远洋航道已经打开' },
+  { id: 'enemy_white_whale', name: '白鲸之王', maxHp: 150, attack: 20, rewardGold: 520, type: 'monster', description: '古老鲸群的守护者，额骨上的旧伤刻着失落航线的位置' },
   { id: 'enemy_monster_2', name: '幽灵船', maxHp: 100, attack: 18, rewardGold: 360, type: 'monster', description: '传说中永远在海上漂泊的亡灵船' },
   { id: 'enemy_patrol_1', name: '海军巡防舰', maxHp: 120, attack: 20, rewardGold: 0, type: 'patrol', description: '代表王室维持治安的军舰，击沉会遭到通缉' },
   { id: 'enemy_debt_collector', name: '铁血讨债团', maxHp: 300, attack: 35, rewardGold: 0, type: 'patrol', description: '银行派来的冷血雇佣兵，欠债还钱天经地义！' },

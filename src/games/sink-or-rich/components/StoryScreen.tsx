@@ -52,7 +52,7 @@ export const StoryScreen: React.FC<Props> = ({ player, onComplete }) => {
     options = [{ text: '展开远洋补给线。', onClick: () => onComplete(5) }];
   } else if (player.storyProgress === 5) {
     title = '第五章：远洋补给链';
-    content = '珊瑚群岛、季风远洋和传说航线终于被连成一条完整补给链。现在所有港口都在你的海图上，深渊航线也不再是酒馆里的疯话。最后一战会决定你是海盗王，还是殖民地总督。';
+    content = '珊瑚群岛、季风远洋和传说航线终于被连成一条完整补给链。水手们还需要一份真正的海怪证据，才能相信深渊不是酒馆里的疯话。最后一战会决定你是海盗王，还是殖民地总督。';
     options = [{ text: '开启深渊远征。', onClick: () => onComplete(FINALE_STORY_PROGRESS) }];
   } else if (player.storyProgress === FINALE_STORY_PROGRESS) {
     if (player.storyBranch === 'governor') {

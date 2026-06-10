@@ -1,6 +1,6 @@
 import { PlayerState } from '../types';
 import { PORTS, ROUTES } from './data';
-import { FINALE_STORY_PROGRESS, hasStoryFlag, normalizeStoryProgress } from './progression';
+import { FINALE_STORY_PROGRESS, hasSeaMonsterProof, hasStoryFlag, normalizeStoryProgress } from './progression';
 
 export interface StoryStatus {
   title: string;
@@ -97,19 +97,21 @@ export function getStoryStatus(player: PlayerState): StoryStatus | null {
     const sailedCoral = hasStoryFlag(player, 'sailed_route_coral');
     const sailedMonsoon = hasStoryFlag(player, 'sailed_route_monsoon');
     const sailedLegend = hasStoryFlag(player, 'sailed_route_legend');
+    const monsterProof = hasSeaMonsterProof(player);
     const visitedPorts = PORTS.filter(port => hasStoryFlag(player, `visited_${port.id}`));
     const targetVisitedPorts = 5;
-    const canAdvance = sailedCoral && sailedMonsoon && sailedLegend && visitedPorts.length >= targetVisitedPorts;
+    const canAdvance = sailedCoral && sailedMonsoon && sailedLegend && monsterProof && visitedPorts.length >= targetVisitedPorts;
     const objectives: string[] = [];
     if (!sailedCoral) objectives.push('完成珊瑚群岛航线');
     if (!sailedMonsoon) objectives.push('完成季风远洋航线');
     if (!sailedLegend) objectives.push('完成传说航线');
+    if (!monsterProof) objectives.push('带回一份海怪证据');
     if (visitedPorts.length < targetVisitedPorts) objectives.push(`抵达不同港口 ${visitedPorts.length} / ${targetVisitedPorts}`);
     return {
       title: canAdvance ? '主线：远洋补给链完成' : '主线目标：铺开远洋补给链',
       description: canAdvance
         ? '你的补给链已经跨过半个世界，最后一张深渊海图浮出水面。'
-        : '珊瑚群岛、季风远洋和传说航线会决定你能否支撑最后一场远征。',
+        : '珊瑚群岛、季风远洋、传说航线和海怪证据会决定你能否支撑最后一场远征。',
       objective: canAdvance ? '深渊航线即将开放。' : objectives.join('；'),
       cta: '开启深渊远征',
       canAdvance,

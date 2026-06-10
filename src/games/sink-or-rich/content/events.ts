@@ -386,6 +386,85 @@ export const GAME_EVENTS: GameEvent[] = [
     ]
   },
   {
+    id: 'event_sea_serpent',
+    name: '黑潮海蛇',
+    description: '一道黑影贴着海面滑行，细长的蛇颈从浪里抬起，鳞片上挂着失落航线的珊瑚屑。',
+    options: [
+      {
+        id: 'serpent_fight',
+        label: '追上去决斗',
+        resolve: (player, voyage) => {
+          return { player, voyage, message: '海蛇盘住船身，远洋猎怪开始了！', combatEnemyId: 'enemy_sea_serpent' };
+        }
+      },
+      {
+        id: 'serpent_fire_ammo',
+        label: '火弹逼退 (消耗1)',
+        requirements: { ammoId: 'ammo_fire' },
+        resolve: (player, voyage) => {
+          const ammoCount = player.ownedAmmo['ammo_fire'] || 0;
+          if (ammoCount <= 0) return { player, voyage, message: '没有火弹！' };
+          return {
+            player: {
+              ...player,
+              ownedAmmo: { ...player.ownedAmmo, ammo_fire: ammoCount - 1 },
+              discoveredEvents: Array.from(new Set([...player.discoveredEvents, 'monster_trace_sea_serpent']))
+            },
+            voyage,
+            message: '火焰照亮了海蛇鳞片上的航路刻痕。你没有击败它，但记下了一段海怪踪迹。'
+          };
+        }
+      },
+      {
+        id: 'serpent_evade',
+        label: '避开黑潮',
+        resolve: (player, voyage) => {
+          return {
+            player: { ...player, currentHull: Math.max(0, player.currentHull - 10) },
+            voyage,
+            message: '你们借侧风避开海蛇，但船底仍被蛇尾擦伤（-10耐久）。'
+          };
+        }
+      }
+    ]
+  },
+  {
+    id: 'event_white_whale',
+    name: '白鲸浮现',
+    description: '一头巨大的白鲸浮出水面，鲸背上的旧伤像一张被海水磨平的远古海图。',
+    options: [
+      {
+        id: 'whale_observe',
+        label: '安静跟随鲸群',
+        resolve: (player, voyage) => {
+          return {
+            player: {
+              ...player,
+              reputation: player.reputation + 10,
+              discoveredEvents: Array.from(new Set([...player.discoveredEvents, 'whale_current_chart']))
+            },
+            voyage: { ...voyage, temporaryGold: voyage.temporaryGold + 180 },
+            message: '你们跟随鲸群穿过暗流，记下了一段安全水道。获得 180 金币，声望 +10。'
+          };
+        }
+      },
+      {
+        id: 'whale_fight',
+        label: '挑战白鲸之王',
+        resolve: (player, voyage) => {
+          return { player, voyage, message: '白鲸撞碎浪墙，决斗开始！', combatEnemyId: 'enemy_white_whale' };
+        }
+      },
+      {
+        id: 'whale_leave',
+        label: '让出航道',
+        resolve: (player, voyage) => {
+          return { player, voyage, message: '你们放下船帆，等鲸群远去。海面恢复平静。' };
+        }
+      }
+    ]
+  },
+  {
     id: 'event_patrol',
     name: '王国巡逻队',
     description: '王国巡逻舰要求你停船接受检查。',

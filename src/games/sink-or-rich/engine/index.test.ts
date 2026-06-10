@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage, createDefaultPlayerState, moveShip, settleArrival, startVoyage } from './index';
+import { calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage, createDefaultPlayerState, moveShip, resolveCombatTurn, settleArrival, startVoyage } from './index';
 import { SHIPS, ARMORS, CARGO_TYPES, ROUTES, PORTS } from '../content/data';
 import { getStoryStatus } from '../content/story';
 import { clampCasinoPayout } from '../content/casino';
 import { createContractKey, generateLocalContracts } from '../content/contracts';
-import { applyStoryUnlocks, FINALE_STORY_PROGRESS, getVisibleRoutes } from '../content/progression';
+import { applyStoryUnlocks, FINALE_STORY_PROGRESS, getVisibleRoutes, hasSeaMonsterProof } from '../content/progression';
 
 describe('Game Logic Tests', () => {
   it('should create default player state correctly', () => {
@@ -160,6 +160,79 @@ describe('Game Logic Tests', () => {
 
     const { player: sailingPlayer } = startVoyage(player, route, 'port_tortuga');
     expect(sailingPlayer.casinoProfitThisPort).toBe(0);
+  });
+
+  it('should generate at most one sea monster encounter per voyage', () => {
+    const player = createDefaultPlayerState();
+    const ship = SHIPS.find(s => s.id === 'ship_war')!;
+    const route = ROUTES.find(r => r.id === 'route_legend')!;
+    player.currentShip = ship;
+    player.currentHull = ship.maxHull;
+
+    for (let i = 0; i < 20; i += 1) {
+      const { voyage } = startVoyage(player, route, 'port_nassau');
+      expect(voyage.entities.filter(entity => entity.type === 'monster')).toHaveLength(
+        voyage.entities.some(entity => entity.type === 'monster') ? 1 : 0
+      );
+      expect(voyage.entities.some(entity => entity.eventId === 'event_leviathan')).toBe(false);
+    }
+  });
+
+  it('should force only the leviathan as the abyss sea monster', () => {
+    const player = createDefaultPlayerState();
+    const ship = SHIPS.find(s => s.id === 'ship_ultimate')!;
+    const route = ROUTES.find(r => r.id === 'route_abyss')!;
+    player.currentShip = ship;
+    player.currentHull = ship.maxHull;
+
+    const { voyage } = startVoyage(player, route, 'port_madagascar');
+    const monsters = voyage.entities.filter(entity => entity.type === 'monster');
+
+    expect(monsters).toHaveLength(1);
+    expect(monsters[0].eventId).toBe('event_leviathan');
+  });
+
+  it('should turn sea monster victories into story proof', () => {
+    const player = createDefaultPlayerState();
+    const ship = SHIPS.find(s => s.id === 'ship_war')!;
+    player.currentShip = ship;
+    player.currentHull = ship.maxHull;
+    player.ownedAmmo = { ammo_normal: 1 };
+
+    const route = ROUTES.find(r => r.id === 'route_black_tide')!;
+    const voyage = {
+      route,
+      destinationPortId: 'port_nassau',
+      position: 0,
+      totalNodes: route.totalNodes,
+      mapWidth: 800,
+      mapHeight: 2600,
+      playerPosition: { x: 100, y: 1000 },
+      distanceTraveled: 0,
+      entities: [],
+      mode: 'combat' as const,
+      temporaryGold: 0,
+      lootCargo: [],
+      eventsResolved: 0,
+      enemiesDefeated: 0,
+      monstersDefeated: 0,
+      log: [],
+      combatState: {
+        enemyId: 'enemy_sea_serpent',
+        enemyHp: 1,
+        enemyMaxHp: 130,
+        enemyNextAttackReduced: false,
+        playerRepairedThisCombat: false,
+        log: [],
+      },
+      currentEvent: null,
+    };
+
+    const { player: updatedPlayer, voyage: updatedVoyage } = resolveCombatTurn(player, voyage, 'attack_normal');
+
+    expect(hasSeaMonsterProof(updatedPlayer)).toBe(true);
+    expect(updatedVoyage.monstersDefeated).toBe(1);
+    expect(updatedPlayer.reputation).toBe(15);
   });
 
   it('should not unlock the finale from gold alone', () => {
