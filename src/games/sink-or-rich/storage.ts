@@ -35,6 +35,12 @@ export function loadGame(): { player: PlayerState; voyage: VoyageState | null } 
       if (typeof player.marketMultiplier !== 'number') {
         player.marketMultiplier = 1.0;
       }
+      if (typeof player.storyProgress !== 'number') {
+        player.storyProgress = 0;
+      }
+      if (player.storyBranch !== 'pirate' && player.storyBranch !== 'governor') {
+        delete player.storyBranch;
+      }
       if (player.cargo && player.cargo.length > 0) {
         player.cargo = player.cargo.map((c: any) => ({
           ...c,

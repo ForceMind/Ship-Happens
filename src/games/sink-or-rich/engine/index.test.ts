@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculateMaxHull, calculateRepairCost, canStartVoyage, createDefaultPlayerState, settleArrival } from './index';
 import { SHIPS, ARMORS, CARGO_TYPES, ROUTES } from '../content/data';
+import { getStoryStatus } from '../content/story';
 
 describe('Game Logic Tests', () => {
   it('should create default player state correctly', () => {
@@ -82,5 +83,12 @@ describe('Game Logic Tests', () => {
     expect(settledPlayer.currentPortId).toBe('port_royal');
     expect(settledPlayer.gold).toBe(1123);
     expect(settledPlayer.cargo.map(c => c.uid)).toEqual(['cargo_silk_test', 'loot_jewelry_test']);
+  });
+
+  it('should treat legacy saves without story progress as the prologue', () => {
+    const player = createDefaultPlayerState();
+    delete (player as Partial<typeof player>).storyProgress;
+
+    expect(getStoryStatus(player)?.title).toBe('主线：破产船长的序章');
   });
 });

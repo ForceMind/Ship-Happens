@@ -9,7 +9,9 @@ export interface StoryStatus {
 }
 
 export function getStoryStatus(player: PlayerState): StoryStatus | null {
-  if (player.storyProgress === 0) {
+  const storyProgress = Number.isFinite(player.storyProgress) ? player.storyProgress : 0;
+
+  if (storyProgress === 0) {
     return {
       title: '主线：破产船长的序章',
       description: '你的旧船队已经沉没，商会债主还在找你。先弄清楚自己为什么必须重回大海。',
@@ -19,7 +21,7 @@ export function getStoryStatus(player: PlayerState): StoryStatus | null {
     };
   }
 
-  if (player.storyProgress === 1) {
+  if (storyProgress === 1) {
     const targetGold = 10000;
     const canAdvance = player.gold >= targetGold;
     return {
@@ -33,7 +35,7 @@ export function getStoryStatus(player: PlayerState): StoryStatus | null {
     };
   }
 
-  if (player.storyProgress === 2) {
+  if (storyProgress === 2) {
     const hasPiratePath = player.bounty >= 100;
     const hasGovernorPath = player.reputation >= 100;
     const canAdvance = hasPiratePath || hasGovernorPath;
@@ -53,7 +55,7 @@ export function getStoryStatus(player: PlayerState): StoryStatus | null {
     };
   }
 
-  if (player.storyProgress === 3) {
+  if (storyProgress === 3) {
     const targetGold = 50000;
     const canAdvance = player.gold >= targetGold;
     const branchName = player.storyBranch === 'pirate' ? '海盗王' : '帝国总督';

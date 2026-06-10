@@ -505,5 +505,76 @@ function drawPlayerShip(ctx: CanvasRenderingContext2D, shipId: string | undefine
     ctx.fillStyle = 'rgba(139, 0, 0, 0.95)'; // 暗红
     ctx.beginPath(); ctx.moveTo(0, -30); ctx.quadraticCurveTo(20, -10, 0, 0); ctx.quadraticCurveTo(-20, -10, 0, -30); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(-20, 5); ctx.quadraticCurveTo(0, 20, 20, 5); ctx.lineTo(20, 15); ctx.quadraticCurveTo(0, 30, -20, 15); ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if (shipId === 'ship_junk') {
+    // ---- 东方大福船 (Junk) ----
+    // 宽大的船身和多层红帆，突出东方贸易船的辨识度
+    ctx.fillStyle = '#9B5A2E';
+    ctx.strokeStyle = '#3e2723';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -36);
+    ctx.quadraticCurveTo(24, -18, 24, 22);
+    ctx.lineTo(12, 36);
+    ctx.lineTo(-12, 36);
+    ctx.lineTo(-24, 22);
+    ctx.quadraticCurveTo(-24, -18, 0, -36);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = '#D7A85D';
+    ctx.fillRect(-14, -5, 28, 30);
+    ctx.fillStyle = '#6B3F20';
+    [-16, 0, 16].forEach(x => {
+      ctx.fillRect(x - 1, -30, 2, 58);
+    });
+
+    ctx.fillStyle = 'rgba(196, 38, 38, 0.95)';
+    [-22, 0, 22].forEach((y, index) => {
+      const width = 36 - index * 4;
+      ctx.beginPath();
+      ctx.moveTo(-width / 2, y - 8);
+      ctx.quadraticCurveTo(0, y + 3, width / 2, y - 8);
+      ctx.lineTo(width / 2, y + 5);
+      ctx.quadraticCurveTo(0, y + 16, -width / 2, y + 5);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    });
+  } else if (shipId === 'ship_ultimate') {
+    // ---- 海神无畏号 (Ultimate Ship) ----
+    ctx.fillStyle = '#263238';
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, -52);
+    ctx.lineTo(20, -20);
+    ctx.lineTo(22, 28);
+    ctx.lineTo(0, 48);
+    ctx.lineTo(-22, 28);
+    ctx.lineTo(-20, -20);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(-3, -42, 6, 82);
+    [-18, 0, 18].forEach(y => {
+      ctx.beginPath();
+      ctx.moveTo(-28, y - 12);
+      ctx.quadraticCurveTo(0, y + 8, 28, y - 12);
+      ctx.lineTo(22, y + 8);
+      ctx.quadraticCurveTo(0, y + 22, -22, y + 8);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    });
+  } else {
+    ctx.fillStyle = '#D2B48C';
+    ctx.strokeStyle = '#8B5A2B';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -24);
+    ctx.quadraticCurveTo(12, -6, 12, 18);
+    ctx.lineTo(-12, 18);
+    ctx.quadraticCurveTo(-12, -6, 0, -24);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
   }
 }
