@@ -10,6 +10,7 @@ export interface Ship {
   speed: number;
   repairCostPerHull: number;
   description: string;
+  availableInPorts?: string[];
 }
 
 export interface Crew {
@@ -18,6 +19,7 @@ export interface Crew {
   price: number;
   effectText: string;
   tags?: string[];
+  availableInPorts?: string[];
 }
 
 export interface Ammo {
@@ -26,6 +28,7 @@ export interface Ammo {
   price: number;
   damage: number;
   effectText: string;
+  availableInPorts?: string[];
 }
 
 export interface Armor {
@@ -33,6 +36,7 @@ export interface Armor {
   name: string;
   price: number;
   effectText: string;
+  availableInPorts?: string[];
 }
 
 export interface Cargo {
@@ -44,6 +48,13 @@ export interface Cargo {
   riskTag: RiskTag;
   description?: string;
   requiredReputation?: number;
+  availableInPorts?: string[];
+}
+
+export interface PlayerCargo extends Cargo {
+  actualBuyPrice: number;
+  sourcePortId: string;
+  uid: string;
 }
 
 export interface Contract {
@@ -55,6 +66,8 @@ export interface Contract {
   penalty: number;
   description?: string;
   requiredReputation?: number;
+  destinationPortId?: string;
+  destinationPortName?: string;
 }
 
 export interface Route {
@@ -129,10 +142,15 @@ export interface PlayerState {
   ownedCrew: Crew[];
   ownedAmmo: Record<string, number>; // ammoId -> count
   ownedArmor: Armor[];
-  cargo: Cargo[];
+  cargo: PlayerCargo[];
   activeContract: Contract | null;
   rescuedByGuild: boolean; // used for the 300 gold rescue
   debt: number;
+  storyProgress: number; // 0 = start, 1 = first 10000 gold, 2 = path chosen, 3 = finale
+  storyBranch?: 'pirate' | 'governor';
+  unlockedRoutes: string[];
+  unlockedPorts: string[];
+  marketMultiplier: number;
 }
 
 export type VoyageMode = 'sailing' | 'returning' | 'arrived' | 'sunk' | 'combat';
@@ -170,7 +188,7 @@ export interface VoyageState {
   entities: SeaEntity[];
   mode: VoyageMode;
   temporaryGold: number;
-  lootCargo: Cargo[];
+  lootCargo: PlayerCargo[];
   eventsResolved: number;
   enemiesDefeated: number;
   monstersDefeated: number;

@@ -2,6 +2,7 @@ import React from 'react';
 import { PlayerState, VoyageState } from '../types';
 import { calculateMaxHull } from '../engine';
 import { SeaMapCanvas } from './SeaMapCanvas';
+import { Modal } from './Modal';
 import styles from './styles.module.css';
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export const VoyageScreen: React.FC<Props> = ({ player, voyage, onShipMove, onReturn, onResolveEvent }) => {
+  const [modal, setModal] = React.useState<{title: string, msg: string, onConfirm: () => void, onCancel: () => void} | null>(null);
   const maxHull = calculateMaxHull(player.currentShip, player.ownedArmor);
   const hullPercent = Math.max(0, Math.min(100, (player.currentHull / maxHull) * 100));
   const totalCargoCount = player.cargo.length + voyage.lootCargo.length;
@@ -22,7 +24,7 @@ export const VoyageScreen: React.FC<Props> = ({ player, voyage, onShipMove, onRe
   return (
     <div className={styles.container}>
       <h2 style={{ textAlign: 'center' }}>{voyage.route?.name}</h2>
-      
+
       <div className={styles.statsBar}>
         <div className={styles.statItem}><span className={styles.statLabel}>金币</span><span className={styles.statValue}>💰{player.gold}</span></div>
         <div className={styles.statItem}><span className={styles.statLabel}>临时冒险收入</span><span className={styles.statValue}>💰{voyage.temporaryGold}</span></div>
@@ -36,14 +38,14 @@ export const VoyageScreen: React.FC<Props> = ({ player, voyage, onShipMove, onRe
       </div>
 
       <div style={{ position: 'relative', margin: '20px 0' }}>
-        <SeaMapCanvas 
+        <SeaMapCanvas
           player={player}
-          voyage={voyage} 
+          voyage={voyage}
           ship={player.currentShip}
-          isPaused={isPaused} 
-          onMove={onShipMove} 
+          isPaused={isPaused}
+          onMove={onShipMove}
         />
-        
+
         {voyage.currentEvent && (
           <div style={{
             position: 'absolute', top: '10%', left: '50%', transform: 'translateX(-50%)',
@@ -59,9 +61,9 @@ export const VoyageScreen: React.FC<Props> = ({ player, voyage, onShipMove, onRe
                 if (opt.requirements?.ammoId && (player.ownedAmmo[opt.requirements.ammoId] || 0) <= 0) disabled = true;
 
                 return (
-                  <button 
-                    key={opt.id} 
-                    className={styles.btnSecondary} 
+                  <button
+                    key={opt.id}
+                    className={styles.btnSecondary}
                     disabled={disabled}
                     onClick={() => onResolveEvent(voyage.currentEvent!.id, opt.id)}
                     style={{ textAlign: 'left', opacity: disabled ? 0.5 : 1, width: '100%' }}
@@ -77,9 +79,15 @@ export const VoyageScreen: React.FC<Props> = ({ player, voyage, onShipMove, onRe
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button className={styles.btnSecondary} onClick={() => {
-          if(window.confirm('中途返航将低价处理货物，且扣除合同手续费。确定吗？')) {
-            onReturn();
-          }
+          setModal({
+            title: '确认返航',
+            msg: '中途返航将低价处理货物，且扣除合同违约金。确定要放弃本次航行吗？',
+            onConfirm: () => {
+              onReturn();
+              setModal(null);
+            },
+            onCancel: () => setModal(null)
+          });
         }}>
           返航
         </button>
@@ -94,6 +102,15 @@ export const VoyageScreen: React.FC<Props> = ({ player, voyage, onShipMove, onRe
           ))}
         </div>
       </div>
+
+      {modal && (
+        <Modal
+          title={modal.title}
+          message={modal.msg}
+          onConfirm={modal.onConfirm}
+          onCancel={modal.onCancel}
+        />
+      )}
     </div>
   );
 };

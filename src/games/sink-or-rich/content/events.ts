@@ -1,7 +1,15 @@
-import { GameEvent, PlayerState, VoyageState, Cargo } from '../types';
+import { GameEvent, PlayerState, VoyageState, Cargo, PlayerCargo } from '../types';
 import { CARGO_TYPES, AMMO_TYPES } from './data';
 
-const getRandomCargo = (): Cargo => CARGO_TYPES[Math.floor(Math.random() * CARGO_TYPES.length)];
+const getRandomCargo = (): PlayerCargo => {
+  const base = CARGO_TYPES[Math.floor(Math.random() * CARGO_TYPES.length)];
+  return {
+    ...base,
+    actualBuyPrice: 0,
+    sourcePortId: 'unknown',
+    uid: `loot_${Date.now()}_${Math.random()}`
+  };
+};
 
 export const GAME_EVENTS: GameEvent[] = [
   {
@@ -24,7 +32,7 @@ export const GAME_EVENTS: GameEvent[] = [
           const isExtraDamage = Math.random() < 0.3;
           let damage = 20 + (isExtraDamage ? 15 : 0);
           if (hasSailor) damage = Math.floor(damage * 0.8);
-          
+
           return {
             player: { ...player, currentHull: Math.max(0, player.currentHull - damage) },
             voyage,
@@ -41,8 +49,8 @@ export const GAME_EVENTS: GameEvent[] = [
           return {
             player: { ...player, currentHull: Math.max(0, player.currentHull - damage) },
             voyage,
-            message: hasNavigator 
-              ? '领航员精准地避开了风暴核心，但船只还是受到了 8 点伤害。' 
+            message: hasNavigator
+              ? '领航员精准地避开了风暴核心，但船只还是受到了 8 点伤害。'
               : '由于没有专业的领航员，你们在风暴中迷失了方向，船只受到了 25 点伤害。'
           };
         }
@@ -74,7 +82,7 @@ export const GAME_EVENTS: GameEvent[] = [
           return {
             player: { ...player, currentHull: Math.max(0, player.currentHull - 20) },
             voyage: { ...voyage, temporaryGold: voyage.temporaryGold + newGold },
-            message: findGold 
+            message: findGold
               ? '你们强行穿过暗礁，船只受损严重（-20耐久），但在礁石间发现了漂浮货箱，获得了 80 金币！'
               : '你们强行穿过暗礁，船只受损严重（-20耐久）。'
           };
@@ -89,7 +97,7 @@ export const GAME_EVENTS: GameEvent[] = [
           return {
             player: { ...player, currentHull: Math.max(0, player.currentHull - damage) },
             voyage,
-            message: hasNavigator 
+            message: hasNavigator
               ? '领航员神乎其技地指挥航向，仅受 5 点轻微损伤。'
               : '没有领航员的指导，你们在暗礁中跌跌撞撞，受到了 18 点伤害。'
           };
@@ -280,7 +288,7 @@ export const GAME_EVENTS: GameEvent[] = [
           const lostCount = Math.ceil(totalCargoLength * 0.3);
           const newPlayerCargo = [...player.cargo];
           const newLootCargo = [...voyage.lootCargo];
-          
+
           let removed = 0;
           while (removed < lostCount) {
             if (newLootCargo.length > 0) {
@@ -340,13 +348,13 @@ export const GAME_EVENTS: GameEvent[] = [
           let removed = 0;
           const newPlayerCargo = [...player.cargo];
           const newLootCargo = [...voyage.lootCargo];
-          
+
           while (removed < dropCount && (newPlayerCargo.length > 0 || newLootCargo.length > 0)) {
             if (newLootCargo.length > 0) newLootCargo.pop();
             else newPlayerCargo.pop();
             removed++;
           }
-          
+
           return {
             player: { ...player, cargo: newPlayerCargo },
             voyage: { ...voyage, lootCargo: newLootCargo },
@@ -361,7 +369,7 @@ export const GAME_EVENTS: GameEvent[] = [
           const loseCrew = Math.random() < 0.3;
           let message = '你们拼死砍断了触手，船只受到 18 点伤害。';
           let newCrew = [...player.ownedCrew];
-          
+
           if (loseCrew && newCrew.length > 0) {
             const lostIdx = Math.floor(Math.random() * newCrew.length);
             message += ` 混乱中，${newCrew[lostIdx].name} 被触手卷入了海底！`;
@@ -388,7 +396,7 @@ export const GAME_EVENTS: GameEvent[] = [
         resolve: (player, voyage) => {
           const allCargo = [...player.cargo, ...voyage.lootCargo];
           const hasIllegal = allCargo.some(c => c.riskTag === 'illegal');
-          
+
           if (!hasIllegal) {
             return {
               player: { ...player, reputation: player.reputation + 5 },
@@ -399,16 +407,16 @@ export const GAME_EVENTS: GameEvent[] = [
             // Fined 200, confiscate 1 illegal
             let fineMsg = '发现了违禁品！罚款 200 金币并没收货物。';
             let newPlayer = { ...player, gold: player.gold - 200 };
-            
+
             if (newPlayer.gold < 0) {
               newPlayer.gold = 0;
               newPlayer.currentHull = Math.max(0, newPlayer.currentHull - 10);
               fineMsg += '由于钱不够，士兵粗暴搜查，船只受损 (-10耐久)。';
             }
-            
+
             const newPlayerCargo = [...player.cargo];
             const newLootCargo = [...voyage.lootCargo];
-            
+
             const pIdx = newPlayerCargo.findIndex(c => c.riskTag === 'illegal');
             if (pIdx >= 0) {
               newPlayerCargo.splice(pIdx, 1);
@@ -417,7 +425,7 @@ export const GAME_EVENTS: GameEvent[] = [
               if (lIdx >= 0) newLootCargo.splice(lIdx, 1);
             }
             newPlayer.cargo = newPlayerCargo;
-            
+
             return {
               player: newPlayer,
               voyage: { ...voyage, lootCargo: newLootCargo },
@@ -580,10 +588,11 @@ export const GAME_EVENTS: GameEvent[] = [
         label: '买违禁品 (150金币)',
         requirements: { gold: 150 },
         resolve: (player, voyage) => {
-          const contraband = CARGO_TYPES.find(c => c.id === 'cargo_contraband');
+          const base = CARGO_TYPES.find(c => c.id === 'cargo_contraband')!;
+          const pCargo: import('../types').PlayerCargo = { ...base, actualBuyPrice: 150, sourcePortId: 'unknown', uid: `blackmarket_${Date.now()}` };
           return {
             player: { ...player, gold: player.gold - 150, bounty: player.bounty + 5 },
-            voyage: { ...voyage, lootCargo: [...voyage.lootCargo, contraband!] },
+            voyage: { ...voyage, lootCargo: [...voyage.lootCargo, pCargo] },
             message: '你们低调地买入了一箱违禁品，隐隐感觉到周围有视线。通缉值 +5。'
           };
         }
@@ -620,7 +629,7 @@ export const GAME_EVENTS: GameEvent[] = [
           const loseCrew = Math.random() < 0.3;
           let message = '你们痛苦地忍受着歌声，强行冲出迷雾，耐久下降 10。';
           let newCrew = [...player.ownedCrew];
-          
+
           if (loseCrew && newCrew.length > 0) {
             const lostIdx = Math.floor(Math.random() * newCrew.length);
             message += ` 但 ${newCrew[lostIdx].name} 还是忍不住跳进了海里！`;
@@ -693,7 +702,7 @@ export const GAME_EVENTS: GameEvent[] = [
         resolve: (player, voyage) => {
           const findTreasure = Math.random() < 0.2; // 20% chance
           const getLost = Math.random() < 0.4; // 40% chance
-          
+
           if (findTreasure) {
             return {
               player,
@@ -928,10 +937,10 @@ export const GAME_EVENTS: GameEvent[] = [
         id: 'leviathan_flee',
         label: '尝试逃跑 (需损失所有货物和一半耐久)',
         resolve: (player, voyage) => {
-          return { 
-            player: { ...player, currentHull: Math.max(1, Math.floor(player.currentHull / 2)), cargo: [] }, 
-            voyage: { ...voyage, lootCargo: [] }, 
-            message: '你丢弃了所有货物，勉强逃出了利维坦的漩涡...' 
+          return {
+            player: { ...player, currentHull: Math.max(1, Math.floor(player.currentHull / 2)), cargo: [] },
+            voyage: { ...voyage, lootCargo: [] },
+            message: '你丢弃了所有货物，勉强逃出了利维坦的漩涡...'
           };
         }
       }
@@ -954,10 +963,10 @@ export const GAME_EVENTS: GameEvent[] = [
         label: '破财消灾 (扣除所有金币抵债)',
         resolve: (player, voyage) => {
           const paid = player.gold;
-          return { 
-            player: { ...player, gold: 0, debt: Math.max(0, player.debt - paid) }, 
-            voyage, 
-            message: `讨债团强行拿走了你身上所有的 ${paid} 金币用来抵债！` 
+          return {
+            player: { ...player, gold: 0, debt: Math.max(0, player.debt - paid) },
+            voyage,
+            message: `讨债团强行拿走了你身上所有的 ${paid} 金币用来抵债！`
           };
         }
       }

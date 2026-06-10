@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { PlayerState } from '../types';
-import { SHIPS, CREW_MEMBERS, AMMO_TYPES, ARMORS, CARGO_TYPES, CONTRACTS, PORTS } from '../content/data';
+import React, { useState, useEffect } from 'react';
+import { PlayerCargo, PlayerState } from '../types';
+import { SHIPS, CREW_MEMBERS, AMMO_TYPES, ARMORS, CARGO_TYPES, PORTS } from '../content/data';
+import { getStoryStatus } from '../content/story';
 import { calculateCargoUsed, calculateMaxHull, calculateRepairCost, canStartVoyage } from '../engine';
+import { Modal } from './Modal';
 import styles from './styles.module.css';
 
 interface Props {
@@ -10,12 +12,46 @@ interface Props {
   onGoToRouteSelect: () => void;
   onRetireVictory: () => void;
   onBankrupt: () => void;
+  onGoToCasino: () => void;
+  onGoToStory?: () => void;
 }
 
-export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSelect, onRetireVictory, onBankrupt }) => {
-  const [activeTab, setActiveTab] = useState<'ship'|'crew'|'ammo'|'armor'|'cargo'|'contract'|'repair'|'bank'>('ship');
+export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSelect, onRetireVictory, onBankrupt, onGoToCasino, onGoToStory }) => {
+  const [activeTab, setActiveTab] = useState<'ship'|'crew'|'ammo'|'armor'|'cargo'|'contract'|'repair'|'bank'|'building'>('ship');
+  const [modal, setModal] = useState<{title: string, msg: string, onConfirm: () => void, onCancel?: () => void} | null>(null);
+  const [localContracts, setLocalContracts] = useState<import('../types').Contract[]>([]);
 
   const currentPort = PORTS.find(p => p.id === (player.currentPortId || 'port_royal')) || PORTS[0];
+
+  useEffect(() => {
+    const availableDestinations = PORTS.filter(p => p.id !== currentPort.id && player.unlockedPorts.includes(p.id));
+    const localCargoTypes = CARGO_TYPES.filter(c => !c.availableInPorts || c.availableInPorts.includes(currentPort.id));
+
+    // If no available destinations (e.g. only 1 port unlocked and we are in it), fallback to the first port
+    const destinations = availableDestinations.length > 0 ? availableDestinations : PORTS;
+
+    const generated = [1, 2, 3].map(i => {
+      const dest = destinations[Math.floor(Math.random() * destinations.length)];
+      const cargo = localCargoTypes.length > 0 ? localCargoTypes[Math.floor(Math.random() * localCargoTypes.length)] : CARGO_TYPES[0];
+      const amount = Math.floor(Math.random() * 3) + 1;
+      let reward = 300 * amount;
+      if (cargo.riskTag === 'illegal') reward *= 3;
+      if (dest.id === 'port_abyss') reward *= 2;
+
+      return {
+        id: `gen_contract_${Date.now()}_${i}`,
+        name: `运送${cargo.name}至${dest.name}`,
+        requiredCargoName: cargo.name,
+        requiredAmount: amount,
+        reward: reward,
+        penalty: Math.floor(reward * 0.3),
+        requiredReputation: cargo.requiredReputation,
+        destinationPortId: dest.id,
+        destinationPortName: dest.name
+      };
+    });
+    setLocalContracts(generated);
+  }, [currentPort.id]);
 
   const getCargoBuyPrice = (cargoId: string, baseBuyPrice: number) => {
     const multiplier = currentPort.priceMultipliers[cargoId] || 1;
@@ -32,13 +68,43 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
   const cargoTotal = player.currentShip ? player.currentShip.cargoSlots : 0;
   const repairCost = calculateRepairCost(player);
   const canSail = canStartVoyage(player);
+  const storyStatus = getStoryStatus(player);
 
   const buyShip = (shipId: string) => {
     const ship = SHIPS.find(s => s.id === shipId)!;
+    if (player.currentShip) {
+      setModal({
+        title: '替换提示',
+        msg: '您当前已经有一艘船了！直接购买会抛弃旧船且不退款。请先手动“卖掉”旧船再购买新船！',
+        onConfirm: () => setModal(null)
+      });
+      return;
+    }
     if (player.gold >= ship.price) {
-      if (player.currentShip && !window.confirm('购买新船会替换旧船且旧船不折现，确认购买吗？')) return;
       setPlayer({ ...player, gold: player.gold - ship.price, currentShip: ship, currentHull: ship.maxHull });
     }
+  };
+
+  const sellShip = () => {
+    if (!player.currentShip) return;
+    if (player.cargo.length > 0 || player.activeContract) {
+      setModal({
+        title: '无法出售',
+        msg: '船上还有货物，或您还有未完成的合同！请先处理完再卖船。',
+        onConfirm: () => setModal(null)
+      });
+      return;
+    }
+    const sellPrice = Math.floor(player.currentShip.price * 0.8 * (player.currentHull / maxHull));
+    setModal({
+      title: '出售船只',
+      msg: `当前耐久 ${player.currentHull}/${maxHull}，按照折旧您能获得 ${sellPrice} 金币。确认卖出吗？`,
+      onConfirm: () => {
+        setPlayer({ ...player, gold: player.gold + sellPrice, currentShip: null, currentHull: 0 });
+        setModal(null);
+      },
+      onCancel: () => setModal(null)
+    });
   };
 
   const buyCrew = (crewId: string) => {
@@ -51,9 +117,9 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
   const buyAmmo = (ammoId: string) => {
     const ammo = AMMO_TYPES.find(a => a.id === ammoId)!;
     if (player.gold >= ammo.price) {
-      setPlayer({ 
-        ...player, 
-        gold: player.gold - ammo.price, 
+      setPlayer({
+        ...player,
+        gold: player.gold - ammo.price,
         ownedAmmo: { ...player.ownedAmmo, [ammoId]: (player.ownedAmmo[ammoId] || 0) + 1 }
       });
     }
@@ -68,16 +134,107 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
 
   const buyCargo = (cargoId: string) => {
     const cargo = CARGO_TYPES.find(c => c.id === cargoId)!;
-    if (player.gold >= getCargoBuyPrice(cargo.id, cargo.buyPrice) && cargoUsed + cargo.slots <= cargoTotal) {
-      setPlayer({ ...player, gold: player.gold - getCargoBuyPrice(cargo.id, cargo.buyPrice), cargo: [...player.cargo, cargo] });
+    const price = getCargoBuyPrice(cargo.id, cargo.buyPrice);
+    if (player.gold >= price && cargoUsed + cargo.slots <= cargoTotal) {
+      const pCargo: import('../types').PlayerCargo = {
+        ...cargo,
+        actualBuyPrice: price,
+        sourcePortId: currentPort.id,
+        uid: `cargo_${Date.now()}_${Math.random()}`
+      };
+      setPlayer({ ...player, gold: player.gold - price, cargo: [...player.cargo, pCargo] });
     }
   };
 
-  const takeContract = (contractId: string) => {
-    const contract = CONTRACTS.find(c => c.id === contractId)!;
-    if (!player.activeContract) {
-      setPlayer({ ...player, activeContract: contract });
+  const buyTreasureBundle = () => {
+    const cost = 2000;
+    const requiredSlots = 3;
+    const availableSlots = player.currentShip ? player.currentShip.cargoSlots - cargoUsed : 0;
+
+    if (player.gold < cost) {
+      setModal({title: '余额不足', msg: `需要 ${cost} 金币。`, onConfirm: () => setModal(null)});
+      return;
     }
+
+    if (availableSlots < requiredSlots) {
+      setModal({title: '舱位不足', msg: `秘宝箱需要至少 ${requiredSlots} 个空余舱位。`, onConfirm: () => setModal(null)});
+      return;
+    }
+
+    const treasurePool = [
+      'cargo_imperial_porcelain',
+      'cargo_imperial_porcelain',
+      'cargo_dragon_pearl',
+      'cargo_dragon_pearl',
+      'cargo_ancient_astrolabe',
+    ]
+      .map(id => CARGO_TYPES.find(c => c.id === id))
+      .filter((cargo): cargo is NonNullable<typeof cargo> => Boolean(cargo));
+
+    if (treasurePool.length === 0) return;
+
+    const picked = Array.from({ length: requiredSlots }, () => treasurePool[Math.floor(Math.random() * treasurePool.length)]);
+    const splitPrices = picked.map((_, index) => Math.floor(cost / requiredSlots) + (index < cost % requiredSlots ? 1 : 0));
+    const bundleCargo: PlayerCargo[] = picked.map((cargo, index) => ({
+      ...cargo,
+      actualBuyPrice: splitPrices[index],
+      sourcePortId: currentPort.id,
+      uid: `treasure_bundle_${Date.now()}_${index}_${Math.random()}`
+    }));
+
+    setPlayer({
+      ...player,
+      gold: player.gold - cost,
+      cargo: [...player.cargo, ...bundleCargo]
+    });
+    setModal({
+      title: '秘宝采购成功',
+      msg: `你花费 ${cost} 金币拿到 ${bundleCargo.map(c => c.name).join('、')}。这些珍品不会在普通交易所出售，带去外港才能卖出好价钱。`,
+      onConfirm: () => setModal(null)
+    });
+  };
+
+  const returnLocalCargo = (index: number) => {
+    const c = player.cargo[index];
+    // 退货收取 10% 折旧费
+    const refundPrice = Math.floor(c.actualBuyPrice * 0.9);
+    const newCargo = [...player.cargo];
+    newCargo.splice(index, 1);
+    setPlayer({ ...player, gold: player.gold + refundPrice, cargo: newCargo });
+  };
+
+  const sellForeignCargo = (index: number) => {
+    const c = player.cargo[index];
+    const sellPrice = Math.floor(getCargoSellPrice(c.id, c.sellPrice) * player.marketMultiplier);
+    const newCargo = [...player.cargo];
+    newCargo.splice(index, 1);
+    setPlayer({ ...player, gold: player.gold + sellPrice, cargo: newCargo });
+  };
+
+  const sellAllForeignCargo = () => {
+    let totalEarnings = 0;
+    const newCargo = player.cargo.filter(c => {
+      if (c.sourcePortId !== currentPort.id) {
+        totalEarnings += Math.floor(getCargoSellPrice(c.id, c.sellPrice) * player.marketMultiplier);
+        return false;
+      }
+      return true;
+    });
+    if (totalEarnings > 0) {
+      setPlayer({ ...player, gold: player.gold + totalEarnings, cargo: newCargo });
+      setModal({title: '交易完成', msg: `你把所有外地货物和战利品卖给了交易所，共获得 ${totalEarnings} 金币！`, onConfirm: () => setModal(null)});
+    }
+  };
+
+  const discardCargo = (index: number) => {
+    const newCargo = [...player.cargo];
+    newCargo.splice(index, 1);
+    setPlayer({ ...player, cargo: newCargo });
+  };
+
+  const takeContract = (contractId: string) => {
+    const contract = localContracts.find(c => c.id === contractId)!;
+    setPlayer({ ...player, activeContract: contract });
   };
 
   const doRepair = () => {
@@ -87,8 +244,8 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
       // Partial repair
       const affordableHull = Math.floor(player.gold / player.currentShip!.repairCostPerHull);
       if (affordableHull > 0) {
-        setPlayer({ 
-          ...player, 
+        setPlayer({
+          ...player,
           gold: player.gold - (affordableHull * player.currentShip!.repairCostPerHull),
           currentHull: player.currentHull + affordableHull
         });
@@ -98,10 +255,16 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
 
   const doRescue = () => {
     setPlayer({ ...player, gold: player.gold + 300, rescuedByGuild: true });
+    setModal({ title: '商会救济', msg: '商会看你可怜，施舍了你 300 金币。好自为之！', onConfirm: () => setModal(null) });
+  };
+
+  const isAvailable = (item: { availableInPorts?: string[] }) => {
+    if (!item.availableInPorts) return true;
+    return item.availableInPorts.includes(player.currentPortId);
   };
 
   const creditLimit = 2000 + player.reputation * 100;
-  
+
   const doBorrow = () => {
     if (player.debt < creditLimit) {
       const amount = Math.min(1000, creditLimit - player.debt);
@@ -118,9 +281,10 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
 
   return (
     <div className={styles.container} style={{ backgroundColor: currentPort.colorTheme, transition: 'background-color 1s ease' }}>
+      {modal && <Modal title={modal.title} message={modal.msg} onConfirm={modal.onConfirm} onCancel={modal.onCancel} />}
       <h2 style={{ textAlign: 'center', marginBottom: '5px' }}>{currentPort.name}</h2>
       <p style={{ textAlign: 'center', fontSize: '0.9rem', color: '#ccc', marginBottom: '15px' }}>{currentPort.description}</p>
-      
+
       <div className={styles.statsBar}>
         <div className={styles.statItem}><span className={styles.statLabel}>金币</span><span className={styles.statValue}>💰{player.gold}</span></div>
         <div className={styles.statItem}><span className={styles.statLabel}>当前船</span><span className={styles.statValue}>{player.currentShip ? player.currentShip.name : '无'}</span></div>
@@ -133,9 +297,15 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
       {player.gold >= 50000 && (
         <div className={styles.card} style={{ borderColor: '#FFD700', background: 'rgba(255, 215, 0, 0.1)' }}>
           <h3 style={{ color: '#FFD700', textAlign: 'center' }}>你已经积累了惊人的财富！</h3>
-          <p style={{ textAlign: 'center', marginBottom: '10px' }}>你可以选择激流勇退，买下岛屿安度余生。</p>
-          <button className={styles.btnPrimary} style={{ width: '100%', backgroundColor: '#FFD700', color: '#000' }} onClick={onRetireVictory}>
-            退休：富甲一方 (通关)
+          <p style={{ textAlign: 'center', marginBottom: '10px' }}>
+            {player.storyProgress >= 3 ? '主线终章已经开启，是时候把你的旗帜插到最后的海岸。' : '你可以选择激流勇退，也可以先完成上方主线抉择。'}
+          </p>
+          <button
+            className={styles.btnPrimary}
+            style={{ width: '100%', backgroundColor: '#FFD700', color: '#000' }}
+            onClick={player.storyProgress >= 3 && onGoToStory ? onGoToStory : onRetireVictory}
+          >
+            {player.storyProgress >= 3 ? '进入终章 (主线通关)' : '退休：富甲一方 (通关)'}
           </button>
         </div>
       )}
@@ -148,7 +318,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
               <button className={styles.btnPrimary} onClick={doRescue}>
                 商会救济 (+300金币)
               </button>
-              <p className={styles.statLabel}>防死档机制：每局只能使用一次</p>
+              <p className={styles.statLabel}>注意：商会的救济金每局只能申请一次！</p>
             </>
           ) : (
             <>
@@ -161,6 +331,8 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         </div>
       )}
 
+      {/* Top buttons removed to prevent duplication */}
+
       <div style={{ display: 'flex', overflowX: 'auto', gap: '5px', marginBottom: '15px', paddingBottom: '10px' }}>
         <button className={activeTab === 'ship' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('ship')}>船只</button>
         <button className={activeTab === 'crew' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('crew')}>船员</button>
@@ -170,28 +342,48 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         <button className={activeTab === 'contract' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('contract')}>合同</button>
         <button className={activeTab === 'repair' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('repair')}>维修</button>
         <button className={activeTab === 'bank' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('bank')}>银行</button>
+        <button className={activeTab === 'building' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('building')}>建筑</button>
       </div>
 
       <div className={styles.card}>
         {activeTab === 'ship' && (
           <div className={styles.grid}>
-            {SHIPS.map(s => (
-              <div key={s.id} className={styles.itemCard}>
-                <div>
-                  <div className={styles.itemName}>{s.name}</div>
-                  <div className={styles.itemDesc}>{s.description}</div>
-                  <div className={styles.itemDesc}>耐久:{s.maxHull} 舱位:{s.cargoSlots} 炮位:{s.cannonSlots}</div>
-                  <div className={styles.itemPrice}>💰 {s.price}</div>
+            {SHIPS.filter(s => isAvailable(s) || player.currentShip?.id === s.id).map(s => {
+              const isOwned = player.currentShip?.id === s.id;
+              return (
+                <div key={s.id} className={styles.itemCard}>
+                  <div>
+                    <div className={styles.itemName}>{s.name} {isOwned && <span style={{color: '#4caf50'}}>(当前座驾)</span>}</div>
+                    <div className={styles.itemDesc}>{s.description}</div>
+                    <div className={styles.itemDesc}>耐久:{s.maxHull} 舱位:{s.cargoSlots} 炮位:{s.cannonSlots}</div>
+                    <div className={styles.itemPrice}>💰 {s.price}</div>
+                  </div>
+                  {isOwned ? (
+                    <button className={styles.btnSecondary} style={{ margin: 0, color: '#f44336' }} onClick={sellShip}>
+                      卖掉
+                    </button>
+                  ) : (
+                    <button className={styles.btnPrimary} style={{ margin: 0 }} disabled={player.gold < s.price} onClick={() => buyShip(s.id)}>购买</button>
+                  )}
                 </div>
-                <button className={styles.btnPrimary} style={{ margin: 0 }} disabled={player.gold < s.price} onClick={() => buyShip(s.id)}>购买</button>
+              );
+            })}
+            {player.reputation < 300 && (
+              <div className={styles.itemCard} style={{ opacity: 0.5, borderStyle: 'dashed', borderColor: '#ccc' }}>
+                <div>
+                  <div className={styles.itemName}>??? (终极战舰)</div>
+                  <div className={styles.itemDesc}>造船厂最深处的绝密图纸，据说只有女王册封的总督才有资格看一眼。（解锁条件：声望 300）</div>
+                  <div className={styles.itemPrice}>💰 ???</div>
+                </div>
+                <button className={styles.btnPrimary} disabled style={{ margin: 0 }}>🔒 未解锁</button>
               </div>
-            ))}
+            )}
           </div>
         )}
 
         {activeTab === 'crew' && (
           <div className={styles.grid}>
-            {CREW_MEMBERS.map(c => {
+            {CREW_MEMBERS.filter(isAvailable).map(c => {
               const owned = player.ownedCrew.some(oc => oc.id === c.id);
               return (
                 <div key={c.id} className={styles.itemCard}>
@@ -206,12 +398,22 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 </div>
               );
             })}
+            {player.bounty < 300 && (
+              <div className={styles.itemCard} style={{ opacity: 0.5, borderStyle: 'dashed', borderColor: '#ccc' }}>
+                <div>
+                  <div className={styles.itemName}>??? (神秘人物)</div>
+                  <div className={styles.itemDesc}>酒馆角落里戴着兜帽的危险男人。他只和四海最臭名昭著的恶棍打交道。（解锁条件：通缉 300）</div>
+                  <div className={styles.itemPrice}>💰 ???</div>
+                </div>
+                <button className={styles.btnPrimary} disabled style={{ margin: 0 }}>🔒 未解锁</button>
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === 'ammo' && (
           <div className={styles.grid}>
-            {AMMO_TYPES.map(a => {
+            {AMMO_TYPES.filter(isAvailable).map(a => {
               const count = player.ownedAmmo[a.id] || 0;
               return (
                 <div key={a.id} className={styles.itemCard}>
@@ -229,7 +431,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
 
         {activeTab === 'armor' && (
           <div className={styles.grid}>
-            {ARMORS.map(a => {
+            {ARMORS.filter(isAvailable).map(a => {
               const owned = player.ownedArmor.some(oa => oa.id === a.id);
               return (
                 <div key={a.id} className={styles.itemCard}>
@@ -244,30 +446,98 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 </div>
               );
             })}
+            {player.reputation < 150 && (
+              <div className={styles.itemCard} style={{ opacity: 0.5, borderStyle: 'dashed', borderColor: '#ccc' }}>
+                <div>
+                  <div className={styles.itemName}>??? (远古遗物)</div>
+                  <div className={styles.itemDesc}>黑市商人藏起来的宝贝，由深渊巨兽的鳞片打造而成。（解锁条件：声望 150）</div>
+                  <div className={styles.itemPrice}>💰 ???</div>
+                </div>
+                <button className={styles.btnPrimary} disabled style={{ margin: 0 }}>🔒 未解锁</button>
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === 'cargo' && (
-          <div className={styles.grid}>
-            {CARGO_TYPES.map(c => {
-              const buyPrice = getCargoBuyPrice(c.id, c.buyPrice);
-              const sellPrice = getCargoSellPrice(c.id, c.sellPrice);
-              const locked = player.reputation < (c.requiredReputation || 0);
-              return (
-                <div key={c.id} className={styles.itemCard}>
-                  <div>
-                    <div className={styles.itemName}>{c.name} {c.riskTag === 'illegal' && '☠️'} {locked && '🔒'}</div>
-                    <div className={styles.itemDesc}>进价: {buyPrice} | 售价: {sellPrice}</div>
-                    {c.description && <div className={styles.itemDesc} style={{ color: '#f44336' }}>{c.description}</div>}
-                    {locked && <div className={styles.itemDesc} style={{ color: '#f44336' }}>需声望: {c.requiredReputation}</div>}
-                    <div className={styles.itemPrice}>💰 {buyPrice}</div>
+          <div>
+            <h3 style={{ marginBottom: '15px' }}>交易所 - 购买</h3>
+            <div className={styles.grid}>
+              {CARGO_TYPES.filter(isAvailable).map(c => {
+                const buyPrice = getCargoBuyPrice(c.id, c.buyPrice);
+                const locked = player.reputation < (c.requiredReputation || 0);
+                return (
+                  <div key={c.id} className={styles.itemCard}>
+                    <div>
+                      <div className={styles.itemName}>{c.name} {c.riskTag === 'illegal' && '☠️'} {locked && '🔒'}</div>
+                      <div className={styles.itemDesc}>当前港口进价: 💰 {buyPrice}</div>
+                      {c.description && <div className={styles.itemDesc} style={{ color: '#f44336' }}>{c.description}</div>}
+                      {locked && <div className={styles.itemDesc} style={{ color: '#f44336' }}>需声望: {c.requiredReputation}</div>}
+                    </div>
+                    <button className={styles.btnPrimary} style={{ margin: 0 }} disabled={locked || player.gold < buyPrice || cargoUsed + c.slots > cargoTotal} onClick={() => buyCargo(c.id)}>
+                      买入
+                    </button>
                   </div>
-                  <button className={styles.btnPrimary} style={{ margin: 0 }} disabled={locked || player.gold < buyPrice || cargoUsed + c.slots > cargoTotal} onClick={() => buyCargo(c.id)}>
-                    买入
-                  </button>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '30px', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0 }}>我的货舱 (舱位: {cargoUsed}/{cargoTotal})</h3>
+              {player.cargo.some(c => c.sourcePortId !== currentPort.id) && (
+                <button className={styles.btnPrimary} style={{ backgroundColor: '#4caf50', margin: 0, padding: '5px 15px' }} onClick={sellAllForeignCargo}>
+                  一键售出全部外地货
+                </button>
+              )}
+            </div>
+
+            {player.cargo.length === 0 ? (
+              <p style={{ color: '#ccc' }}>货舱空空如也，快去进点货吧！</p>
+            ) : (
+              <div className={styles.grid}>
+                {player.cargo.map((c, idx) => {
+                  const isLocal = c.sourcePortId === currentPort.id;
+                  const refundPrice = Math.floor(c.actualBuyPrice * 0.9);
+                  const sellPrice = Math.floor(getCargoSellPrice(c.id, c.sellPrice) * player.marketMultiplier);
+                  const profit = sellPrice - c.actualBuyPrice;
+
+                  return (
+                    <div key={c.uid || idx} className={styles.itemCard} style={{ borderColor: isLocal ? '#777' : '#2196f3' }}>
+                      <div>
+                        <div className={styles.itemName}>{c.name} {isLocal ? '(本地)' : '(外地)'}</div>
+                        <div className={styles.itemDesc}>占用舱位: {c.slots}</div>
+                        <div className={styles.itemDesc}>
+                          进价: 💰 {c.actualBuyPrice === 0 ? '0 (战利品)' : c.actualBuyPrice}
+                        </div>
+                        {isLocal ? (
+                          <div className={styles.itemDesc} style={{ color: '#f44336' }}>
+                            退货可得: 💰 {refundPrice} (折旧10%)
+                          </div>
+                        ) : (
+                          <div className={styles.itemDesc} style={{ color: profit > 0 ? '#4caf50' : '#f44336' }}>
+                            跨洋销售价: 💰 {sellPrice} {profit > 0 ? `(赚 ${profit})` : `(亏 ${Math.abs(profit)})`}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'row', gap: '5px' }}>
+                        <button className={styles.btnSecondary} style={{ padding: '5px 10px', margin: 0, fontSize: '0.9rem', whiteSpace: 'nowrap' }} onClick={() => discardCargo(idx)}>
+                          丢弃
+                        </button>
+                        {isLocal ? (
+                          <button className={styles.btnSecondary} style={{ padding: '5px 10px', margin: 0, fontSize: '0.9rem', whiteSpace: 'nowrap' }} onClick={() => returnLocalCargo(idx)}>
+                            退货
+                          </button>
+                        ) : (
+                          <button className={styles.btnPrimary} style={{ padding: '5px 10px', margin: 0, fontSize: '0.9rem', whiteSpace: 'nowrap', backgroundColor: '#2196f3' }} onClick={() => sellForeignCargo(idx)}>
+                            销售
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -277,17 +547,19 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
               <div>
                 <h3 style={{ color: '#f6d365' }}>当前合同：{player.activeContract.name}</h3>
                 <p>要求: {player.activeContract.requiredCargoName} x{player.activeContract.requiredAmount}</p>
+                <p>目的港: {player.activeContract.destinationPortName}</p>
                 <p>奖励: <span style={{ color: '#4caf50' }}>{player.activeContract.reward}</span> | 违约金: <span style={{ color: '#f44336' }}>{player.activeContract.penalty}</span></p>
-                <p className={styles.itemDesc}>注意：接合同不给货，需自己去市场买。</p>
+                <p className={styles.itemDesc}>注意：必须在目的港才能完成交货！接合同不给货，需自己买。</p>
               </div>
             ) : (
               <div className={styles.grid}>
-                {CONTRACTS.map(c => {
+                {localContracts.map(c => {
                   const locked = player.reputation < (c.requiredReputation || 0);
                   return (
                     <div key={c.id} className={styles.itemCard}>
                       <div>
                         <div className={styles.itemName}>{c.name} {locked && '🔒'}</div>
+                        <div className={styles.itemDesc}>目的港: {c.destinationPortName}</div>
                         <div className={styles.itemDesc}>要求: {c.requiredCargoName} x{c.requiredAmount}</div>
                         <div className={styles.itemDesc}>奖励: {c.reward} | 违约: {c.penalty}</div>
                         {locked && <div className={styles.itemDesc} style={{ color: '#f44336' }}>需声望: {c.requiredReputation}</div>}
@@ -312,6 +584,8 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                   {player.gold >= repairCost ? '修满' : '用尽金币维修'}
                 </button>
               </div>
+            ) : !player.currentShip ? (
+              <p>你还没有船，谈何维修？</p>
             ) : (
               <p>船只状态完好，不需要维修。</p>
             )}
@@ -333,7 +607,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
               <span className={styles.statLabel}>信用额度</span>
               <span className={styles.statValue}>💰 {creditLimit} (基于声望)</span>
             </div>
-            
+
             <div style={{ display: 'flex', gap: '10px' }}>
               <button className={styles.btnPrimary} disabled={player.debt >= creditLimit} onClick={doBorrow}>
                 借款 +1000
@@ -346,19 +620,185 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
           </div>
         )}
       </div>
+      <div style={{ textAlign: 'center', marginTop: '10px' }}>
+        {!player.currentShip && <p className={styles.statLabel}>需要先购买一艘船</p>}
+        {activeTab === 'building' && (
+          <div className={styles.storyBanner}>
+            <div>
+              <div className={styles.storyTitle}>{storyStatus?.title || '主线剧情：尾声'}</div>
+              <div className={styles.storyDesc}>{storyStatus?.description || '你的故事已经写进港口传说，新的船长还会继续追逐这片海。'}</div>
+              {storyStatus && (
+                <div className={storyStatus.canAdvance ? styles.storyReady : styles.storyObjective}>
+                  {storyStatus.objective}
+                </div>
+              )}
+            </div>
+            {storyStatus?.canAdvance && onGoToStory ? (
+              <button className={styles.btnPrimary} style={{ margin: 0, whiteSpace: 'nowrap' }} onClick={onGoToStory}>
+                {storyStatus.cta}
+              </button>
+            ) : (
+              <button className={styles.btnSecondary} style={{ margin: 0, whiteSpace: 'nowrap' }} disabled>
+                等待推进
+              </button>
+            )}
+          </div>
+        )}
 
-      <div style={{ textAlign: 'center', marginTop: '20px' }}>
-        <button 
-          className={styles.btnPrimary} 
-          style={{ width: '100%', fontSize: '1.5rem', padding: '15px' }}
-          disabled={!canSail} 
+        {activeTab === 'building' && player.currentPortId === 'port_royal' && (
+          <div className={styles.card} style={{ borderColor: '#e91e63' }}>
+            <h3 style={{ color: '#e91e63', textAlign: 'center', marginBottom: '20px' }}>帝国总督府</h3>
+            <p style={{ textAlign: 'center', color: '#ccc' }}>肃穆的帝国政府大楼。只要你有足够的金币和声望，即使是海盗也能在这里买到贵族的身份。</p>
+            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <button
+                className={styles.btnPrimary}
+                onClick={() => {
+                  const cost = player.bounty * 100;
+                  if (player.gold >= cost) {
+                    setPlayer({...player, gold: player.gold - cost, bounty: 0});
+                    setModal({title: '罪名洗清', msg: `你花费了 ${cost} 金币打点总督，现在的记录像白纸一样干净了。`, onConfirm: () => setModal(null)});
+                  } else {
+                    setModal({title: '余额不足', msg: `打点总督需要 ${cost} 金币（通缉值x100）。没钱就别来总督府！`, onConfirm: () => setModal(null)});
+                  }
+                }}
+                disabled={player.bounty === 0}
+              >
+                洗刷罪名 (花费 {player.bounty * 100} 金币)
+              </button>
+
+              {!player.unlockedRoutes.includes('route_ocean') && (
+                <button
+                  className={styles.btnPrimary}
+                  onClick={() => {
+                    if (player.gold >= 5000 && player.reputation >= 50) {
+                      setPlayer({...player, gold: player.gold - 5000, unlockedRoutes: [...player.unlockedRoutes, 'route_ocean']});
+                      setModal({title: '获取委任状', msg: '你获得了远洋航线的探索委任状！', onConfirm: () => setModal(null)});
+                    } else {
+                      setModal({title: '条件不足', msg: '需要 5000 金币和 50 声望才能购买远洋委任状。', onConfirm: () => setModal(null)});
+                    }
+                  }}
+                >
+                  购买大洋航线委任状 (5000金 / 需50声望)
+                </button>
+              )}
+
+              {!player.unlockedPorts.includes('port_oriental') && (
+                <button
+                  className={styles.btnPrimary}
+                  style={{ backgroundColor: '#ff9800' }}
+                  onClick={() => {
+                    if (player.gold >= 8000 && player.reputation >= 80) {
+                      setPlayer({...player, gold: player.gold - 8000, unlockedPorts: [...player.unlockedPorts, 'port_oriental']});
+                      setModal({title: '获取通行证', msg: '你获得了前往神秘东方贸易港的永久通行证！', onConfirm: () => setModal(null)});
+                    } else {
+                      setModal({title: '条件不足', msg: '需要 8000 金币和 80 声望才能获得东方港通行证。', onConfirm: () => setModal(null)});
+                    }
+                  }}
+                >
+                  购买东方贸易港通行证 (8000金 / 需80声望)
+                </button>
+              )}
+
+              {storyStatus?.canAdvance && player.storyProgress > 0 && player.storyProgress < 3 && onGoToStory && (
+                <button className={styles.btnPrimary} style={{ backgroundColor: '#FFD700', color: '#000' }} onClick={onGoToStory}>
+                  继续主线：面见帝国海军上将
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'building' && player.currentPortId === 'port_tortuga' && (
+          <div className={styles.card} style={{ borderColor: '#9c27b0' }}>
+            <h3 style={{ color: '#9c27b0', textAlign: 'center', marginBottom: '20px' }}>海盗公会密室</h3>
+            <p style={{ textAlign: 'center', color: '#ccc' }}>阴暗潮湿的地下室，空气中弥漫着朗姆酒和血腥味。这里只认金币，不问出处。</p>
+            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <button
+                className={styles.btnPrimary}
+                onClick={() => {
+                  const cost = player.bounty * 80;
+                  if (player.gold >= cost) {
+                    setPlayer({...player, gold: player.gold - cost, bounty: 0});
+                    setModal({title: '黑道销账', msg: `你花费了 ${cost} 金币在黑市买到了假身份。`, onConfirm: () => setModal(null)});
+                  } else {
+                    setModal({title: '余额不足', msg: `假身份需要 ${cost} 金币（通缉值x80）。`, onConfirm: () => setModal(null)});
+                  }
+                }}
+                disabled={player.bounty === 0}
+              >
+                黑市销账假身份 (花费 {player.bounty * 80} 金币)
+              </button>
+
+              {!player.unlockedRoutes.includes('route_abyss') && (
+                <button
+                  className={styles.btnPrimary}
+                  onClick={() => {
+                    if (player.gold >= 20000 && (player.bounty >= 150 || player.reputation >= 150)) {
+                      setPlayer({...player, gold: player.gold - 20000, unlockedRoutes: [...player.unlockedRoutes, 'route_abyss']});
+                      setModal({title: '获取黑市海图', msg: '你得到了通往深渊死地的禁忌海图！', onConfirm: () => setModal(null)});
+                    } else {
+                      setModal({title: '条件不足', msg: '需要 20000 金币，且通缉值或声望达到 150。', onConfirm: () => setModal(null)});
+                    }
+                  }}
+                >
+                  购买深渊禁忌海图 (20000金 / 需150声望或通缉)
+                </button>
+              )}
+
+              {storyStatus?.canAdvance && player.storyProgress > 0 && player.storyProgress < 3 && onGoToStory && (
+                <button className={styles.btnPrimary} style={{ backgroundColor: '#FFD700', color: '#000' }} onClick={onGoToStory}>
+                  继续主线：拜会海盗王
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'building' && player.currentPortId === 'port_oriental' && (
+          <div className={styles.card} style={{ borderColor: '#009688' }}>
+            <h3 style={{ color: '#009688', textAlign: 'center', marginBottom: '20px' }}>远东大商行</h3>
+            <p style={{ textAlign: 'center', color: '#ccc' }}>来自远东的神秘商会。如果你愿意出大价钱，他们会把珍稀货物打包卖给你。</p>
+            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <button
+                className={styles.btnPrimary}
+                onClick={buyTreasureBundle}
+                disabled={!player.currentShip}
+              >
+                大宗秘宝盲盒 (2000金 / 需3舱位)
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ textAlign: 'center', marginTop: '30px', display: 'flex', gap: '10px' }}>
+        {player.currentPortId !== 'port_oriental' && (
+          <button
+            className={styles.btnSecondary}
+            style={{ flex: 1, fontSize: '1.2rem', padding: '15px', color: player.currentPortId === 'port_royal' ? '#ffb300' : '#d500f9', borderColor: player.currentPortId === 'port_royal' ? '#ffb300' : '#d500f9' }}
+            onClick={onGoToCasino}
+          >
+            {player.currentPortId === 'port_royal' ? '🎰 皇家大赌场' : '☠️ 海盗赌坊'}
+          </button>
+        )}
+        <button
+          className={styles.btnPrimary}
+          style={{ flex: 2, fontSize: '1.5rem', padding: '15px' }}
+          disabled={!canSail}
           onClick={onGoToRouteSelect}
         >
           出海！
         </button>
-        {!player.currentShip && <p className={styles.statLabel}>需要先购买一艘船</p>}
       </div>
 
+      {modal && (
+        <Modal
+          title={modal.title}
+          message={modal.msg}
+          onConfirm={modal.onConfirm}
+          onCancel={modal.onCancel}
+        />
+      )}
     </div>
   );
 };

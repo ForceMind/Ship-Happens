@@ -10,8 +10,11 @@ import { VoyageScreen } from './components/VoyageScreen';
 import { CombatScreen } from './components/CombatScreen';
 import { SettlementScreen } from './components/SettlementScreen';
 import { GameOverScreen } from './components/GameOverScreen';
+import { CasinoScreen } from './components/CasinoScreen';
+import { StoryScreen } from './components/StoryScreen';
+import { canAdvanceStory } from './content/story';
 
-type AppScreen = 'title' | 'port' | 'route_select' | 'voyage' | 'combat' | 'settlement' | 'game_over';
+type AppScreen = 'title' | 'port' | 'route_select' | 'voyage' | 'combat' | 'settlement' | 'game_over' | 'casino';
 
 export const SinkOrRichGame: React.FC = () => {
   const [player, setPlayer] = useState<PlayerState | null>(null);
@@ -19,6 +22,15 @@ export const SinkOrRichGame: React.FC = () => {
   const [screen, setScreen] = useState<AppScreen>('title');
   const [settlementResult, setSettlementResult] = useState<string[]>([]);
   const [settlementMode, setSettlementMode] = useState<'arrived' | 'returning' | 'sunk'>('arrived');
+  const [showStory, setShowStory] = useState(false);
+
+  useEffect(() => {
+    if (!player) return;
+    if (showStory || screen !== 'port' || !canAdvanceStory(player)) return;
+
+    const timerId = window.setTimeout(() => setShowStory(true), 0);
+    return () => window.clearTimeout(timerId);
+  }, [player, screen, showStory]);
 
   useEffect(() => {
     const { player: p, voyage: v } = loadGame();
@@ -87,7 +99,7 @@ export const SinkOrRichGame: React.FC = () => {
     }
 
     const { player: p, voyage: v, collidedEntityId } = moveShip(player, voyage, dx, dy);
-    
+
     if (collidedEntityId) {
       const vWithEvent = triggerEvent(p, v, collidedEntityId);
       setPlayer(p);
@@ -112,7 +124,7 @@ export const SinkOrRichGame: React.FC = () => {
     const { player: p, voyage: v } = resolveEventChoice(player, voyage, eventId, choiceId);
     setPlayer(p);
     setVoyage(v);
-    
+
     if (v.mode === 'sunk') {
       const { player: p2, resultMsg } = settleSinking(p);
       setPlayer(p2);
@@ -164,58 +176,90 @@ export const SinkOrRichGame: React.FC = () => {
   return (
     <div>
       {screen === 'title' && (
-        <TitleScreen 
-          player={player} 
-          hasSavedVoyage={!!voyage} 
-          onStartNew={handleStartNew} 
-          onContinue={handleContinue} 
-          onReset={handleReset} 
+        <TitleScreen
+          player={player}
+          hasSavedVoyage={!!voyage}
+          onStartNew={handleStartNew}
+          onContinue={handleContinue}
+          onReset={handleReset}
         />
       )}
       {screen === 'port' && (
-        <PortScreen 
-          player={player} 
-          setPlayer={setPlayer} 
-          onGoToRouteSelect={() => setScreen('route_select')} 
-          onRetireVictory={() => setScreen('game_over')}
+        <PortScreen
+          player={player}
+          setPlayer={setPlayer}
+          onGoToRouteSelect={() => setScreen('route_select')}
+          onRetireVictory={() => {
+            resetGame();
+            setScreen('title');
+          }}
           onBankrupt={() => setScreen('game_over')}
+          onGoToCasino={() => setScreen('casino')}
+          onGoToStory={() => setShowStory(true)}
+        />
+      )}
+      {screen === 'casino' && (
+        <CasinoScreen
+          player={player}
+          setPlayer={setPlayer}
+          onLeave={() => setScreen('port')}
         />
       )}
       {screen === 'route_select' && (
-        <RouteSelect 
+        <RouteSelect
           currentPortId={player.currentPortId || 'port_royal'}
-          onSelectRoute={handleSelectRoute} 
-          onCancel={() => setScreen('port')} 
+          unlockedRoutes={player.unlockedRoutes}
+          player={player}
+          onSelectRoute={handleSelectRoute}
+          onCancel={() => setScreen('port')}
         />
       )}
       {screen === 'voyage' && voyage && (
-        <VoyageScreen 
-          player={player} 
-          voyage={voyage} 
-          onShipMove={handleShipMove} 
+        <VoyageScreen
+          player={player}
+          voyage={voyage}
+          onShipMove={handleShipMove}
           onReturn={handleReturn}
           onResolveEvent={handleResolveEvent}
         />
       )}
       {screen === 'combat' && voyage && (
-        <CombatScreen 
-          player={player} 
-          voyage={voyage} 
-          onCombatAction={handleCombatAction} 
+        <CombatScreen
+          player={player}
+          voyage={voyage}
+          onCombatAction={handleCombatAction}
         />
       )}
       {screen === 'settlement' && (
-        <SettlementScreen 
-          player={player} 
-          mode={settlementMode} 
-          resultMsg={settlementResult} 
-          onFinishSettlement={handleFinishSettlement} 
+        <SettlementScreen
+          player={player}
+          mode={settlementMode}
+          resultMsg={settlementResult}
+          onFinishSettlement={handleFinishSettlement}
         />
       )}
       {screen === 'game_over' && (
-        <GameOverScreen 
+        <GameOverScreen
           player={player}
           onRestart={handleStartNew}
+        />
+      )}
+
+      {showStory && (
+        <StoryScreen
+          player={player}
+          onComplete={(newProgress, branch) => {
+            if (newProgress === 4) {
+              resetGame();
+              setScreen('title');
+              setShowStory(false);
+              return;
+            }
+            const update = { ...player, storyProgress: newProgress };
+            if (branch) update.storyBranch = branch;
+            setPlayer(update);
+            setShowStory(false);
+          }}
         />
       )}
     </div>

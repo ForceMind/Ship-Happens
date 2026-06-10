@@ -55,7 +55,8 @@ export const SHIPS: Ship[] = [
     cannonSlots: 1,
     speed: 4,
     repairCostPerHull: 2,
-    description: '便宜灵活，适合新手试水。'
+    description: '便宜灵活，适合新手试水。',
+    availableInPorts: ['port_royal', 'port_tortuga', 'port_oriental']
   },
   {
     id: 'ship_merchant',
@@ -66,7 +67,8 @@ export const SHIPS: Ship[] = [
     cannonSlots: 1,
     speed: 3,
     repairCostPerHull: 4,
-    description: '舱位大，适合正经贸易。'
+    description: '舱位大，适合正经贸易。',
+    availableInPorts: ['port_royal', 'port_oriental']
   },
   {
     id: 'ship_war',
@@ -77,7 +79,8 @@ export const SHIPS: Ship[] = [
     cannonSlots: 3,
     speed: 3,
     repairCostPerHull: 6,
-    description: '火力强，适合打劫和猎怪。'
+    description: '火力强，适合打劫和猎怪。',
+    availableInPorts: ['port_royal', 'port_tortuga']
   },
   {
     id: 'ship_heavy',
@@ -88,7 +91,20 @@ export const SHIPS: Ship[] = [
     cannonSlots: 2,
     speed: 2,
     repairCostPerHull: 8,
-    description: '很耐打，但维修昂贵。'
+    description: '很耐打，但维修昂贵。',
+    availableInPorts: ['port_royal']
+  },
+  {
+    id: 'ship_junk',
+    name: '东方大福船',
+    price: 3000,
+    maxHull: 180,
+    cargoSlots: 15,
+    cannonSlots: 0,
+    speed: 4,
+    repairCostPerHull: 5,
+    description: '东方特有的多桅帆船。货舱极大且航速优异，但完全没有武装能力。',
+    availableInPorts: ['port_oriental']
   },
   {
     id: 'ship_ultimate',
@@ -99,40 +115,44 @@ export const SHIPS: Ship[] = [
     cannonSlots: 5,
     speed: 5,
     repairCostPerHull: 20,
-    description: '象征着四海之王的终极战舰，足以去深渊挑战传说中的海妖。'
+    description: '象征着四海之王的终极战舰，足以去深渊挑战传说中的海妖。',
+    availableInPorts: ['port_tortuga']
   }
 ];
 
 export const CREW_MEMBERS: Crew[] = [
-  { id: 'crew_sailor', name: '水手', price: 100, effectText: '风暴、漩涡等自然事件伤害降低 20%' },
-  { id: 'crew_gunner', name: '炮手', price: 150, effectText: '炮击伤害 +20%' },
-  { id: 'crew_doctor', name: '医生', price: 180, effectText: '船员受伤或死亡概率降低' },
-  { id: 'crew_repairman', name: '修船匠', price: 220, effectText: '每通过一个海域事件后，若未沉船，恢复 3 点耐久' },
-  { id: 'crew_navigator', name: '领航员', price: 250, effectText: '暗礁、迷雾、偏航事件损失降低' },
-  { id: 'crew_pirate_king', name: '海盗头子', price: 300, effectText: '登船战收益 +30%，但通缉值增加更快' },
-  { id: 'crew_merchant_agent', name: '商会代理人', price: 300, effectText: '贸易收入 +15%，但抢劫收益 -10%' },
+  { id: 'crew_sailor', name: '水手', price: 100, effectText: '风暴、漩涡等自然事件伤害降低 20%', availableInPorts: ['port_royal', 'port_tortuga', 'port_oriental'] },
+  { id: 'crew_gunner', name: '炮手', price: 150, effectText: '炮击伤害 +20%', availableInPorts: ['port_royal', 'port_tortuga'] },
+  { id: 'crew_doctor', name: '医生', price: 180, effectText: '船员受伤或死亡概率降低', availableInPorts: ['port_royal', 'port_oriental'] },
+  { id: 'crew_repairman', name: '修船匠', price: 220, effectText: '每通过一个海域事件后，若未沉船，恢复 3 点耐久', availableInPorts: ['port_royal', 'port_tortuga', 'port_oriental'] },
+  { id: 'crew_navigator', name: '领航员', price: 250, effectText: '暗礁、迷雾、偏航事件损失降低', availableInPorts: ['port_royal', 'port_oriental'] },
+  { id: 'crew_pirate_king', name: '海盗头子', price: 300, effectText: '登船战收益 +30%，但通缉值增加更快', availableInPorts: ['port_tortuga'] },
+  { id: 'crew_merchant_agent', name: '商会代理人', price: 300, effectText: '贸易收入 +15%，但抢劫收益 -10%', availableInPorts: ['port_royal', 'port_oriental'] },
 ];
 
 export const AMMO_TYPES: Ammo[] = [
-  { id: 'ammo_normal', name: '普通炮弹', price: 10, damage: 15, effectText: '基础攻击' },
-  { id: 'ammo_chain', name: '链弹', price: 20, damage: 10, effectText: '降低敌人速度，提高逃跑成功率' },
-  { id: 'ammo_fire', name: '火弹', price: 35, damage: 20, effectText: '对海怪额外有效，造成燃烧伤害' },
+  { id: 'ammo_normal', name: '普通炮弹', price: 10, damage: 15, effectText: '基础攻击', availableInPorts: ['port_royal', 'port_tortuga', 'port_oriental'] },
+  { id: 'ammo_chain', name: '链弹', price: 20, damage: 10, effectText: '降低敌人速度，提高逃跑成功率', availableInPorts: ['port_royal', 'port_tortuga'] },
+  { id: 'ammo_fire', name: '火弹', price: 35, damage: 20, effectText: '对海怪额外有效，造成燃烧伤害', availableInPorts: ['port_tortuga', 'port_oriental'] },
 ];
 
 export const ARMORS: Armor[] = [
-  { id: 'armor_wood', name: '木板加固', price: 100, effectText: '最大耐久 +20' },
-  { id: 'armor_iron', name: '铁甲板', price: 250, effectText: '战斗受到的伤害 -15%，但速度 -1' },
-  { id: 'armor_waterproof', name: '防水舱', price: 300, effectText: '每次航行第一次受到致命伤害时，船只保留 1 点耐久' },
-  { id: 'armor_watchtower', name: '瞭望塔', price: 180, effectText: '显示下一个海域可能事件的提示' },
+  { id: 'armor_wood', name: '木板加固', price: 100, effectText: '最大耐久 +20', availableInPorts: ['port_royal', 'port_tortuga', 'port_oriental'] },
+  { id: 'armor_iron', name: '铁甲板', price: 250, effectText: '战斗受到的伤害 -15%，但速度 -1', availableInPorts: ['port_royal'] },
+  { id: 'armor_waterproof', name: '防水舱', price: 300, effectText: '每次航行第一次受到致命伤害时，船只保留 1 点耐久', availableInPorts: ['port_tortuga', 'port_oriental'] },
+  { id: 'armor_watchtower', name: '瞭望塔', price: 180, effectText: '显示下一个海域可能事件的提示', availableInPorts: ['port_royal', 'port_oriental'] },
 ];
 
 export const CARGO_TYPES: Cargo[] = [
-  { id: 'cargo_wood', name: '木材', buyPrice: 30, sellPrice: 45, slots: 1, riskTag: 'low', requiredReputation: 0 },
-  { id: 'cargo_spice', name: '香料', buyPrice: 80, sellPrice: 130, slots: 1, riskTag: 'medium', requiredReputation: 10 },
-  { id: 'cargo_silk', name: '丝绸', buyPrice: 120, sellPrice: 210, slots: 1, riskTag: 'high', requiredReputation: 30 },
-  { id: 'cargo_jewelry', name: '珠宝', buyPrice: 300, sellPrice: 600, slots: 1, riskTag: 'extreme', requiredReputation: 80 },
-  { id: 'cargo_weapons', name: '军火', buyPrice: 200, sellPrice: 400, slots: 1, riskTag: 'illegal', description: '提高遇到巡逻队检查的风险', requiredReputation: 150 },
-  { id: 'cargo_contraband', name: '违禁品', buyPrice: 150, sellPrice: 450, slots: 1, riskTag: 'illegal', description: '被巡逻队检查时会罚款或没收', requiredReputation: 200 },
+  { id: 'cargo_wood', name: '木材', buyPrice: 30, sellPrice: 45, slots: 1, riskTag: 'low', requiredReputation: 0, availableInPorts: ['port_royal'] },
+  { id: 'cargo_spice', name: '香料', buyPrice: 80, sellPrice: 130, slots: 1, riskTag: 'medium', requiredReputation: 10, availableInPorts: ['port_oriental'] },
+  { id: 'cargo_silk', name: '丝绸', buyPrice: 120, sellPrice: 210, slots: 1, riskTag: 'high', requiredReputation: 30, availableInPorts: ['port_oriental'] },
+  { id: 'cargo_jewelry', name: '珠宝', buyPrice: 300, sellPrice: 600, slots: 1, riskTag: 'extreme', requiredReputation: 80, availableInPorts: ['port_oriental'] },
+  { id: 'cargo_weapons', name: '军火', buyPrice: 200, sellPrice: 400, slots: 1, riskTag: 'illegal', description: '提高遇到巡逻队检查的风险', requiredReputation: 150, availableInPorts: ['port_royal', 'port_tortuga'] },
+  { id: 'cargo_contraband', name: '违禁品', buyPrice: 150, sellPrice: 450, slots: 1, riskTag: 'illegal', description: '被巡逻队检查时会罚款或没收', requiredReputation: 200, availableInPorts: ['port_tortuga'] },
+  { id: 'cargo_imperial_porcelain', name: '帝王瓷器', buyPrice: 900, sellPrice: 1200, slots: 1, riskTag: 'extreme', description: '远东贡窑秘藏，不会出现在普通交易所。', requiredReputation: 0, availableInPorts: [] },
+  { id: 'cargo_dragon_pearl', name: '龙涎珍珠', buyPrice: 1200, sellPrice: 1600, slots: 1, riskTag: 'extreme', description: '传说只有深海巨蚌才会孕出的异宝。', requiredReputation: 0, availableInPorts: [] },
+  { id: 'cargo_ancient_astrolabe', name: '古代星盘', buyPrice: 1800, sellPrice: 2600, slots: 1, riskTag: 'extreme', description: '失落王朝的航海遗物，收藏家愿意重金收购。', requiredReputation: 0, availableInPorts: [] },
 ];
 
 export const CONTRACTS: Contract[] = [

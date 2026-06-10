@@ -5,12 +5,15 @@ import styles from './styles.module.css';
 
 interface Props {
   currentPortId: string;
+  unlockedRoutes: string[];
   onSelectRoute: (route: Route, destinationPortId: string) => void;
   onCancel: () => void;
+  player: import('../types').PlayerState;
 }
 
-export const RouteSelect: React.FC<Props> = ({ currentPortId, onSelectRoute, onCancel }) => {
-  const [selectedPortId, setSelectedPortId] = React.useState<string>(PORTS.find(p => p.id !== currentPortId)?.id || PORTS[0].id);
+export const RouteSelect: React.FC<Props> = ({ currentPortId, unlockedRoutes, onSelectRoute, onCancel, player }) => {
+  const availablePorts = PORTS.filter(p => p.id !== currentPortId && player.unlockedPorts.includes(p.id));
+  const [selectedPortId, setSelectedPortId] = React.useState<string>(availablePorts.length > 0 ? availablePorts[0].id : PORTS[0].id);
   return (
     <div className={styles.container}>
       <h2 style={{ textAlign: 'center' }}>选择航线</h2>
@@ -18,37 +21,50 @@ export const RouteSelect: React.FC<Props> = ({ currentPortId, onSelectRoute, onC
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px', alignItems: 'center', gap: '10px' }}>
         <span style={{ fontSize: '1.2rem' }}>目的港：</span>
-        <select 
-          className={styles.btnSecondary} 
+        <select
+          className={styles.btnSecondary}
           style={{ padding: '10px', fontSize: '1.2rem', minWidth: '150px', backgroundColor: '#333', color: '#fff' }}
           value={selectedPortId}
           onChange={e => setSelectedPortId(e.target.value)}
         >
-          {PORTS.filter(p => p.id !== currentPortId).map(p => (
+          {availablePorts.map(p => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        {ROUTES.map(r => (
-          <div key={r.id} className={styles.card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <h3 className={styles.cardTitle}>{r.name}</h3>
-                <p className={styles.itemDesc}>{r.description}</p>
-                <div style={{ fontSize: '0.9rem', color: '#ccc', marginTop: '10px' }}>
-                  <p>节点数: {r.totalNodes} | 基础耐久损耗: {r.hullLossPerNode}/格</p>
-                  <p>
-                    贸易倍率: <span style={{ color: r.tradeMultiplier >= 1.5 ? '#4caf50' : '#fff' }}>x{r.tradeMultiplier}</span> | 
-                    冒险倍率: <span style={{ color: r.adventureMultiplier >= 1.5 ? '#4caf50' : '#fff' }}>x{r.adventureMultiplier}</span>
-                  </p>
+        {ROUTES.map(r => {
+          const isUnlocked = unlockedRoutes.includes(r.id);
+          return (
+            <div key={r.id} className={styles.card} style={{ opacity: isUnlocked ? 1 : 0.6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h3 className={styles.cardTitle}>{r.name} {!isUnlocked && '🔒'}</h3>
+                  <p className={styles.itemDesc}>{r.description}</p>
+                  <div style={{ fontSize: '0.9rem', color: '#ccc', marginTop: '10px' }}>
+                    <p>节点数: {r.totalNodes} | 基础耐久损耗: {r.hullLossPerNode}/格</p>
+                    <p>
+                      贸易倍率: <span style={{ color: r.tradeMultiplier >= 1.5 ? '#4caf50' : '#fff' }}>x{r.tradeMultiplier}</span> |
+                      冒险倍率: <span style={{ color: r.adventureMultiplier >= 1.5 ? '#4caf50' : '#fff' }}>x{r.adventureMultiplier}</span>
+                    </p>
+                    {!isUnlocked && (
+                      <p style={{ color: '#f44336', marginTop: '5px', fontWeight: 'bold' }}>需在特定港口的总督府或密室购买海图解锁</p>
+                    )}
+                  </div>
                 </div>
+                <button
+                  className={styles.btnPrimary}
+                  onClick={() => onSelectRoute(r, selectedPortId)}
+                  disabled={!isUnlocked}
+                  style={{ backgroundColor: isUnlocked ? undefined : '#555' }}
+                >
+                  {isUnlocked ? '出航' : '未解锁'}
+                </button>
               </div>
-              <button className={styles.btnPrimary} onClick={() => onSelectRoute(r, selectedPortId)}>出航</button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div style={{ textAlign: 'center', marginTop: '20px' }}>

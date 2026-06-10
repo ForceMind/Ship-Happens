@@ -1,12 +1,12 @@
 {
   "name": "temp-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "3.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:zip": "npm run build && cd dist && tar.exe -a -c -f ../ship-happens-dist.zip *",
+    "build:zip": "npm run build && cd dist && tar -a -c -f ../ship-happens-dist.zip *",
     "lint": "eslint .",
     "preview": "vite preview"
   },

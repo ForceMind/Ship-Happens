@@ -1,6 +1,6 @@
 import { PlayerState, VoyageState, Route, Enemy, CombatState, Ship, Armor, VoyageMode } from '../types';
 import { GAME_EVENTS } from '../content/events';
-import { ENEMIES, PORTS, CARGO_TYPES } from '../content/data';
+import { ENEMIES, CARGO_TYPES } from '../content/data';
 
 export function createDefaultPlayerState(): PlayerState {
   return {
@@ -22,6 +22,10 @@ export function createDefaultPlayerState(): PlayerState {
     activeContract: null,
     rescuedByGuild: false,
     debt: 0,
+    storyProgress: 0,
+    unlockedRoutes: ['route_coastal'],
+    unlockedPorts: ['port_royal', 'port_tortuga'],
+    marketMultiplier: 1.0,
   };
 }
 
@@ -48,11 +52,11 @@ export function calculateRepairCost(player: PlayerState): number {
   const maxHull = calculateMaxHull(player.currentShip, player.ownedArmor);
   const missingHull = maxHull - player.currentHull;
   if (missingHull <= 0) return 0;
-  
+
   let cost = missingHull * player.currentShip.repairCostPerHull;
   if (player.bounty > 80) cost *= 1.4;
   else if (player.bounty > 50) cost *= 1.2;
-  
+
   return Math.floor(cost);
 }
 
@@ -66,12 +70,12 @@ export function canStartVoyage(player: PlayerState): boolean {
 export function startVoyage(player: PlayerState, route: Route, destinationPortId: string): { player: PlayerState, voyage: VoyageState } {
   const mapWidth = 800;
   const mapHeight = route.totalNodes * 400 + 600; // e.g. 5 nodes = 2600 height
-  
+
   const entities: typeof GAME_EVENTS[0]['id'][] = [];
   // Generate entities based on route risk
   const entityCount = Math.floor(route.totalNodes * route.riskMultiplier * 1.5);
   const generatedEntities = [];
-  
+
   for (let i = 0; i < entityCount; i++) {
     const event = GAME_EVENTS[Math.floor(Math.random() * GAME_EVENTS.length)];
     let type = 'cargo';
@@ -165,7 +169,7 @@ export function moveShip(player: PlayerState, voyage: VoyageState, dx: number, d
   const speedMultiplier = player.currentShip.speed * 0.8;
   const newX = Math.max(0, Math.min(voyage.mapWidth, voyage.playerPosition.x + dx * speedMultiplier));
   const newY = Math.max(150, Math.min(voyage.mapHeight, voyage.playerPosition.y + dy * speedMultiplier));
-  
+
   const distanceMoved = Math.sqrt(Math.pow(newX - voyage.playerPosition.x, 2) + Math.pow(newY - voyage.playerPosition.y, 2));
   const newDistance = voyage.distanceTraveled + distanceMoved;
 
@@ -177,7 +181,7 @@ export function moveShip(player: PlayerState, voyage: VoyageState, dx: number, d
   const hullLossRate = voyage.route.hullLossPerNode / 400;
   const oldLoss = Math.floor(voyage.distanceTraveled * hullLossRate);
   const newLoss = Math.floor(newDistance * hullLossRate);
-  
+
   if (newLoss > oldLoss) {
     newPlayer.currentHull = Math.max(0, newPlayer.currentHull - (newLoss - oldLoss));
   }
@@ -194,13 +198,13 @@ export function moveShip(player: PlayerState, voyage: VoyageState, dx: number, d
 
   newVoyage.entities = newVoyage.entities.map(entity => {
     let newEntity = { ...entity };
-    
+
     // Chasing logic
     if (!newEntity.resolved && (newEntity.type === 'pirate' || newEntity.type === 'monster')) {
       const dxEnemy = newX - newEntity.x;
       const dyEnemy = newY - newEntity.y;
       const dist = Math.sqrt(dxEnemy * dxEnemy + dyEnemy * dyEnemy);
-      
+
       // Aggro radius 400px
       if (dist < 400 && dist > 5) {
         const baseSpeed = newEntity.type === 'pirate' ? 2.5 : 2.0;
@@ -237,9 +241,9 @@ export function triggerEvent(player: PlayerState, voyage: VoyageState, entityId:
 }
 
 export function resolveEventChoice(
-  player: PlayerState, 
-  voyage: VoyageState, 
-  eventId: string, 
+  player: PlayerState,
+  voyage: VoyageState,
+  eventId: string,
   choiceId: string
 ): { player: PlayerState, voyage: VoyageState } {
   const event = GAME_EVENTS.find(e => e.id === eventId);
@@ -248,7 +252,10 @@ export function resolveEventChoice(
   if (!choice) return { player, voyage };
 
   let result = choice.resolve(player, voyage);
-  
+
+  // Create a shallow copy to prevent mutating the original React state directly
+  result.voyage = { ...result.voyage };
+
   // Apply repairman crew effect if it's a non-combat resolution
   if (!result.combatEnemyId && result.player.currentHull > 0) {
     const hasRepairman = result.player.ownedCrew.some(c => c.id === 'crew_repairman');
@@ -265,9 +272,9 @@ export function resolveEventChoice(
     if (enemy) {
       result.voyage.mode = 'combat';
       // If giant octopus vs fire ammo, already handled in event if we want, but we handle it here:
-      const enemyHp = (enemy.id === 'enemy_monster_1' && choiceId === 'octopus_fire_ammo') 
+      const enemyHp = (enemy.id === 'enemy_monster_1' && choiceId === 'octopus_fire_ammo')
         ? Math.max(0, enemy.maxHp - 40) : enemy.maxHp;
-        
+
       result.voyage.combatState = {
         enemyId: enemy.id,
         enemyHp: enemyHp,
@@ -369,7 +376,7 @@ export function resolveCombatTurn(player: PlayerState, voyage: VoyageState, acti
     combatLogs.push(`击败了 ${enemy.name}!`);
     let rewardGold = enemy.rewardGold;
     if (voyage.route) rewardGold = Math.floor(rewardGold * voyage.route.adventureMultiplier);
-    
+
     if (action === 'board' && newPlayer.ownedCrew.some(c => c.id === 'crew_pirate_king')) {
       rewardGold = Math.floor(rewardGold * 1.3);
     }
@@ -378,7 +385,13 @@ export function resolveCombatTurn(player: PlayerState, voyage: VoyageState, acti
     combatLogs.push(`获得 ${rewardGold} 金币奖励。`);
 
     if (Math.random() < 0.3) {
-      const randomCargo = CARGO_TYPES[Math.floor(Math.random() * CARGO_TYPES.length)];
+      const baseCargo = CARGO_TYPES[Math.floor(Math.random() * CARGO_TYPES.length)];
+      const randomCargo: import('../types').PlayerCargo = {
+        ...baseCargo,
+        actualBuyPrice: 0,
+        sourcePortId: 'unknown',
+        uid: `loot_${Date.now()}_${Math.random()}`
+      };
       newVoyage.lootCargo.push(randomCargo);
       combatLogs.push(`获得了战利品: ${randomCargo.name}。`);
     }
@@ -394,7 +407,7 @@ export function resolveCombatTurn(player: PlayerState, voyage: VoyageState, acti
     newVoyage.mode = 'sailing';
     newVoyage.eventsResolved += 1;
     newVoyage.combatState = null;
-    
+
     const hasRepairman = newPlayer.ownedCrew.some(c => c.id === 'crew_repairman');
     if (hasRepairman) {
       const maxHull = calculateMaxHull(newPlayer.currentShip, newPlayer.ownedArmor);
@@ -424,43 +437,51 @@ export function resolveCombatTurn(player: PlayerState, voyage: VoyageState, acti
   return checkSinking(newPlayer, newVoyage);
 }
 
-export function settleArrival(player: PlayerState, voyage: VoyageState): { player: PlayerState, resultMsg: string[] } {
+export function settleArrival(player: import('../types').PlayerState, voyage: import('../types').VoyageState): { player: import('../types').PlayerState, resultMsg: string[] } {
   let p = { ...player };
   let msg = ['成功到达目的港！'];
 
-  // Trade income
-  let tradeIncome = 0;
-  const destinationPort = PORTS.find(port => port.id === voyage.destinationPortId) || PORTS[0];
-  const allCargo = [...p.cargo, ...voyage.lootCargo];
-  allCargo.forEach(c => {
-    let sell = c.sellPrice;
-    const portMultiplier = destinationPort.priceMultipliers[c.id] || 1;
-    sell = Math.floor(sell * portMultiplier);
-    if (voyage.route) sell = Math.floor(sell * voyage.route.tradeMultiplier);
-    tradeIncome += sell;
-  });
-  
-  if (p.ownedCrew.some(c => c.id === 'crew_merchant_agent')) {
-    tradeIncome = Math.floor(tradeIncome * 1.15);
-  }
-  
-  p.gold += tradeIncome;
-  msg.push(`贸易收入: +${tradeIncome} 金币`);
+  // Transfer loot to cargo
+  p.cargo = [...p.cargo, ...voyage.lootCargo];
 
-  // Contract income
+  // Set market multiplier based on the route taken
+  p.marketMultiplier = voyage.route ? voyage.route.tradeMultiplier : 1.0;
+  if (p.marketMultiplier > 1) {
+    msg.push(`穿越高风险航线，当前港口商会对此行货物开出 ${p.marketMultiplier} 倍高价收购！`);
+  }
+
+  // Contract checkome
   let contractIncome = 0;
   let contractPenalty = 0;
   if (p.activeContract) {
-    const requiredCount = allCargo.filter(c => c.name === p.activeContract!.requiredCargoName).length;
-    if (requiredCount >= p.activeContract.requiredAmount) {
-      contractIncome = p.activeContract.reward;
-      p.reputation += 10;
-      msg.push(`合同完成 (${p.activeContract.name}): +${contractIncome} 金币, +10 声望`);
+    if (voyage.destinationPortId === p.activeContract.destinationPortId || !p.activeContract.destinationPortId) {
+      const requiredCount = p.cargo.filter(c => c.name === p.activeContract!.requiredCargoName).length;
+      if (requiredCount >= p.activeContract.requiredAmount) {
+        contractIncome = p.activeContract.reward;
+        p.reputation += 10;
+
+        // Consume the required cargo
+        let consumed = 0;
+        p.cargo = p.cargo.filter(c => {
+          if (c.name === p.activeContract!.requiredCargoName && consumed < p.activeContract!.requiredAmount) {
+            consumed++;
+            return false;
+          }
+          return true;
+        });
+
+        msg.push(`合同完成 (${p.activeContract.name}): +${contractIncome} 金币, +10 声望`);
+      } else {
+        contractPenalty = p.activeContract.penalty;
+        p.reputation -= 5;
+        msg.push(`未带齐货物，合同违约 (${p.activeContract.name}): -${contractPenalty} 金币, -5 声望`);
+      }
     } else {
       contractPenalty = p.activeContract.penalty;
       p.reputation -= 5;
-      msg.push(`合同违约 (${p.activeContract.name}): -${contractPenalty} 金币, -5 声望`);
+      msg.push(`未抵达指定目的港，合同违约 (${p.activeContract.name}): -${contractPenalty} 金币, -5 声望`);
     }
+    p.activeContract = null;
   }
   p.gold += contractIncome - contractPenalty;
 
@@ -481,8 +502,7 @@ export function settleArrival(player: PlayerState, voyage: VoyageState): { playe
   }
 
   msg.push(`当前通缉值: ${p.bounty}, 声望: ${p.reputation}, 债务: ${p.debt}`);
-  
-  p.cargo = [];
+
   p.activeContract = null;
   p.successfulVoyageCount += 1;
   p.currentPortId = voyage.destinationPortId;
@@ -538,7 +558,17 @@ export function settleSinking(player: PlayerState): { player: PlayerState, resul
   p.ownedAmmo = {};
   p.ownedArmor = [];
   let msg = ['船沉了。货物、炮弹、船员和这一趟的发财梦，全都留在海底了。'];
-  
+
+  if (p.gold > 0) {
+    let cost = Math.floor(p.gold * 0.2);
+    if (cost < 100 && p.gold >= 100) cost = 100;
+    else if (cost < 100) cost = p.gold;
+    p.gold -= cost;
+    msg.push(`你抱着一块碎木板在海上漂流，被过路的商船救起。作为报酬，你支付了 ${cost} 金币的救援费。`);
+  } else {
+    msg.push(`你抱着一块碎木板在海上漂流，被好心的渔民捞起，所幸你本来就身无分文，没啥可失去的了。`);
+  }
+
   if (p.activeContract) {
     p.gold = Math.max(0, p.gold - p.activeContract.penalty);
     p.reputation -= 10;
