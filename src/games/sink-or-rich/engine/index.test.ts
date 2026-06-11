@@ -10,11 +10,14 @@ import {
   getSeaEntityChaseSpeed,
   getVoyageDestinationPosition,
   moveShip,
+  resolveEventChoice,
   resolveCombatTurn,
   settleArrival,
-  startVoyage
+  startVoyage,
+  triggerEvent
 } from './index';
 import { SHIPS, ARMORS, CARGO_TYPES, ROUTES, PORTS } from '../content/data';
+import { GAME_EVENTS } from '../content/events';
 import { getStoryStatus } from '../content/story';
 import { clampCasinoPayout } from '../content/casino';
 import { createContractKey, generateLocalContracts } from '../content/contracts';
@@ -119,6 +122,41 @@ describe('Game Logic Tests', () => {
     expect(getEventEntityType('event_glowing_coral')).toBe('coral');
     expect(getEventEntityType('event_lost_fishermen')).toBe('merchant');
     expect(getEventEntityType('event_navy_flotsam')).toBe('cargo');
+  });
+
+  it('should add contextual text to repeated sea events and choices', () => {
+    const player = createDefaultPlayerState();
+    const route = ROUTES.find(r => r.id === 'route_storm')!;
+    const ship = SHIPS.find(s => s.id === 'ship_fishing')!;
+    player.currentPortId = 'port_royal';
+    player.currentShip = ship;
+    player.currentHull = ship.maxHull;
+    player.voyageCount = 4;
+    const { voyage: startedVoyage } = startVoyage(player, route, 'port_cartagena');
+    const voyage = {
+      ...startedVoyage,
+      entities: [{
+        id: 'test_storm',
+        type: 'storm' as const,
+        x: 400,
+        y: 800,
+        radius: 80,
+        eventId: 'event_storm',
+        resolved: false,
+      }]
+    };
+    const baseStorm = GAME_EVENTS.find(event => event.id === 'event_storm')!;
+
+    const triggeredVoyage = triggerEvent(player, voyage, 'test_storm');
+
+    expect(triggeredVoyage.currentEvent?.description).not.toBe(baseStorm.description);
+    expect(triggeredVoyage.currentEvent?.description.length).toBeGreaterThan(baseStorm.description.length);
+    expect(triggeredVoyage.currentEvent?.options[0].label).toContain('（');
+    expect(triggeredVoyage.log[0]).toContain(route.name);
+
+    const resolved = resolveEventChoice(player, triggeredVoyage, 'event_storm', 'storm_wait');
+    expect(resolved.voyage.log[0]).toContain('你们等风暴过去');
+    expect(resolved.voyage.log[0].length).toBeGreaterThan('你们等风暴过去，浪费了一些时间。'.length);
   });
 
   it('should give sea monsters different chase speeds and combat hints', () => {

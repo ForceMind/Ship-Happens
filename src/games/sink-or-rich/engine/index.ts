@@ -2,6 +2,7 @@ import { PlayerState, VoyageState, Route, Enemy, CombatState, Ship, Armor, Voyag
 import { GAME_EVENTS } from '../content/events';
 import { ENEMIES, CARGO_TYPES, SHIPS } from '../content/data';
 import { addStoryFlags } from '../content/progression';
+import { renderContextualEvent, renderContextualOutcome, renderEncounterLog } from '../content/eventContext';
 
 const FORCED_EVENT_IDS = new Set(['event_leviathan', 'event_debt_collector']);
 
@@ -307,11 +308,12 @@ export function triggerEvent(player: PlayerState, voyage: VoyageState, entityId:
   const entity = voyage.entities.find(e => e.id === entityId);
   if (!entity) return voyage;
   const event = GAME_EVENTS.find(e => e.id === entity.eventId);
+  const currentEvent = event ? renderContextualEvent(event, player, voyage) : null;
   return {
     ...voyage,
-    currentEvent: event || null,
+    currentEvent,
     entities: voyage.entities.map(e => e.id === entityId ? { ...e, resolved: true } : e),
-    log: [`遇到: ${event?.name}`, ...voyage.log].slice(0, 5)
+    log: [event ? renderEncounterLog(event, player, voyage) : '遇到: 未知事件', ...voyage.log].slice(0, 5)
   };
 }
 
@@ -327,6 +329,7 @@ export function resolveEventChoice(
   if (!choice) return { player, voyage };
 
   let result = choice.resolve(player, voyage);
+  result = { ...result, message: renderContextualOutcome(result.message, player, voyage) };
 
   // Create a shallow copy to prevent mutating the original React state directly
   result.voyage = { ...result.voyage };
