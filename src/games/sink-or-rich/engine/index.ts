@@ -5,6 +5,7 @@ import { addStoryFlags } from '../content/progression';
 import { renderContextualEvent, renderContextualOutcome, renderEncounterLog } from '../content/eventContext';
 
 const FORCED_EVENT_IDS = new Set(['event_leviathan', 'event_debt_collector']);
+const BANK_INTEREST_UPDATES_PER_MONTH = 30;
 
 export function getEventEntityType(eventId: string): SeaEntityType {
   if (eventId === 'event_storm') return 'storm';
@@ -144,18 +145,18 @@ export function calculateRepairCost(player: PlayerState): number {
   return Math.floor(cost);
 }
 
-export function getDebtInterestRatePerMinute(debt: number): number {
+export function getDebtMonthlyInterestRate(debt: number): number {
   if (debt <= 0) return 0;
-  if (debt <= 2000) return 0.0012;
-  if (debt <= 10000) return 0.002;
-  if (debt <= 20000) return 0.0032;
-  return 0.005;
+  if (debt <= 2000) return 0.04;
+  if (debt <= 10000) return 0.07;
+  if (debt <= 20000) return 0.1;
+  return 0.15;
 }
 
 export function calculateDebtMinuteInterest(debt: number): number {
-  const rate = getDebtInterestRatePerMinute(debt);
+  const rate = getDebtMonthlyInterestRate(debt);
   if (rate <= 0) return 0;
-  return Math.max(1, Math.floor(debt * rate));
+  return Math.max(1, Math.floor((debt * rate) / BANK_INTEREST_UPDATES_PER_MONTH));
 }
 
 export function applyDebtMinuteInterest(player: PlayerState): PlayerState {

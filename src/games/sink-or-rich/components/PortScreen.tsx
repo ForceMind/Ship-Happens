@@ -4,7 +4,7 @@ import { SHIPS, CREW_MEMBERS, AMMO_TYPES, ARMORS, CARGO_TYPES, PORTS, ROUTES } f
 import { getStoryStatus } from '../content/story';
 import { generateLocalContracts } from '../content/contracts';
 import { addStoryFlags, FINALE_STORY_PROGRESS, hasStoryFlag, isRouteUnlockAvailable, isRouteVisible } from '../content/progression';
-import { calculateCargoUsed, getDebtInterestRatePerMinute, calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage } from '../engine';
+import { calculateCargoUsed, getDebtMonthlyInterestRate, calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage } from '../engine';
 import { Modal } from './Modal';
 import styles from './styles.module.css';
 
@@ -362,12 +362,14 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
   };
 
   const creditLimit = 2000 + player.reputation * 100;
-  const currentDebtRate = getDebtInterestRatePerMinute(player.debt);
+  const borrowAmount = Math.min(1000, Math.max(0, creditLimit - player.debt));
+  const currentDebtRate = getDebtMonthlyInterestRate(player.debt);
+  const debtRateAfterBorrow = getDebtMonthlyInterestRate(player.debt + borrowAmount);
+  const formatDebtMonthlyRate = (rate: number) => `${(rate * 100).toFixed(2)}% / 月`;
 
   const doBorrow = () => {
-    if (player.debt < creditLimit) {
-      const amount = Math.min(1000, creditLimit - player.debt);
-      setPlayer({ ...player, gold: player.gold + amount, debt: player.debt + amount });
+    if (borrowAmount > 0) {
+      setPlayer({ ...player, gold: player.gold + borrowAmount, debt: player.debt + borrowAmount });
     }
   };
 
@@ -709,17 +711,24 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
               <span className={styles.statValue} style={{color: player.debt > 0 ? '#f44336' : '#fff'}}>💰 {player.debt}</span>
             </div>
             <div className={styles.statItem} style={{ marginBottom: '15px' }}>
-              <span className={styles.statLabel}>利率</span>
-              <span className={styles.statValue}>{(currentDebtRate * 100).toFixed(2)}% / 分钟</span>
+              <span className={styles.statLabel}>当前月利率</span>
+              <span className={styles.statValue}>{formatDebtMonthlyRate(currentDebtRate)}</span>
             </div>
+            {borrowAmount > 0 && (
+              <div className={styles.statItem} style={{ marginBottom: '15px' }}>
+                <span className={styles.statLabel}>借后月利率</span>
+                <span className={styles.statValue}>{formatDebtMonthlyRate(debtRateAfterBorrow)}</span>
+              </div>
+            )}
+            <p className={styles.statLabel} style={{ marginBottom: '15px' }}>借钱越多利息越高，债务每分钟更新。</p>
             <div className={styles.statItem} style={{ marginBottom: '15px' }}>
               <span className={styles.statLabel}>信用额度</span>
               <span className={styles.statValue}>💰 {creditLimit} (基于声望)</span>
             </div>
 
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button className={styles.btnPrimary} disabled={player.debt >= creditLimit} onClick={doBorrow}>
-                借款 +1000
+              <button className={styles.btnPrimary} disabled={borrowAmount <= 0} onClick={doBorrow}>
+                借款 +{borrowAmount || 0}
               </button>
               {player.debt > 500 && (
                 <button className={styles.btnSecondary} disabled={player.gold < 500} onClick={() => doRepay(500)}>

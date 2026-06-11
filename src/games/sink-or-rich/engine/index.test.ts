@@ -7,6 +7,7 @@ import {
   createDefaultPlayerState,
   applyDebtMinuteInterest,
   calculateDebtMinuteInterest,
+  getDebtMonthlyInterestRate,
   getEventEntityType,
   getEnemyCombatHint,
   getSeaEntityChaseSpeed,
@@ -36,10 +37,11 @@ describe('Game Logic Tests', () => {
     expect(player.debtGraceMinutes).toBe(0);
   });
 
-  it('should apply online debt interest by minute with higher rates for larger loans', () => {
-    const smallDebtInterest = calculateDebtMinuteInterest(1000);
-    const largeDebtInterest = calculateDebtMinuteInterest(25000);
-    expect(largeDebtInterest).toBeGreaterThan(smallDebtInterest);
+  it('should apply online debt updates with higher monthly rates for larger loans', () => {
+    const smallDebtRate = getDebtMonthlyInterestRate(1000);
+    const largeDebtRate = getDebtMonthlyInterestRate(25000);
+    expect(largeDebtRate).toBeGreaterThan(smallDebtRate);
+    expect(calculateDebtMinuteInterest(25000)).toBe(125);
 
     const player = createDefaultPlayerState();
     player.debt = 25000;
