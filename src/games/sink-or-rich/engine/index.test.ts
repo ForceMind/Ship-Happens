@@ -5,6 +5,7 @@ import {
   calculateRepairUnitCost,
   canStartVoyage,
   createDefaultPlayerState,
+  getEventEntityType,
   getEnemyCombatHint,
   getSeaEntityChaseSpeed,
   getVoyageDestinationPosition,
@@ -108,6 +109,16 @@ describe('Game Logic Tests', () => {
 
     expect(destinationPosition.y).toBe(150);
     expect(Math.abs(destinationPosition.x - voyage.mapWidth / 2)).toBeGreaterThan(100);
+  });
+
+  it('should map sea events to matching map entity visuals', () => {
+    expect(getEventEntityType('event_reef')).toBe('reef');
+    expect(getEventEntityType('event_whirlpool')).toBe('whirlpool');
+    expect(getEventEntityType('event_shipwreck')).toBe('wreck');
+    expect(getEventEntityType('event_trade_winds')).toBe('wind');
+    expect(getEventEntityType('event_glowing_coral')).toBe('coral');
+    expect(getEventEntityType('event_lost_fishermen')).toBe('merchant');
+    expect(getEventEntityType('event_navy_flotsam')).toBe('cargo');
   });
 
   it('should give sea monsters different chase speeds and combat hints', () => {

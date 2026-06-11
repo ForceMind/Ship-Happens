@@ -165,7 +165,7 @@ export interface CombatState {
   log: string[];
 }
 
-export type SeaEntityType = 'storm' | 'reef' | 'cargo' | 'merchant' | 'pirate' | 'monster' | 'patrol' | 'island' | 'black_market' | 'siren';
+export type SeaEntityType = 'storm' | 'reef' | 'whirlpool' | 'wreck' | 'wind' | 'coral' | 'cargo' | 'merchant' | 'pirate' | 'monster' | 'patrol' | 'island' | 'black_market' | 'siren';
 
 export interface SeaEntity {
   id: string;

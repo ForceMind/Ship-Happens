@@ -5,9 +5,15 @@ import { addStoryFlags } from '../content/progression';
 
 const FORCED_EVENT_IDS = new Set(['event_leviathan', 'event_debt_collector']);
 
-function getEventEntityType(eventId: string): SeaEntityType {
+export function getEventEntityType(eventId: string): SeaEntityType {
   if (eventId === 'event_storm') return 'storm';
   if (eventId === 'event_reef') return 'reef';
+  if (eventId === 'event_whirlpool') return 'whirlpool';
+  if (eventId === 'event_shipwreck') return 'wreck';
+  if (eventId === 'event_trade_winds') return 'wind';
+  if (eventId === 'event_glowing_coral') return 'coral';
+  if (eventId === 'event_lost_fishermen') return 'merchant';
+  if (eventId === 'event_navy_flotsam') return 'cargo';
   if (eventId === 'event_floating_cargo') return 'cargo';
   if (eventId === 'event_damaged_merchant') return 'merchant';
   if (eventId === 'event_pirate_block') return 'pirate';
@@ -22,10 +28,14 @@ function getEventEntityType(eventId: string): SeaEntityType {
   if (eventId === 'event_mutiny') return 'merchant';
   if (eventId === 'event_ghost_fog') return 'storm';
   if (eventId === 'event_blockade') return 'patrol';
-  if (eventId === 'event_whirlpool') return 'reef';
   if (eventId === 'event_leviathan') return 'monster';
   if (eventId === 'event_debt_collector') return 'patrol';
   return 'cargo';
+}
+
+function getSeaEntityRadius(type: SeaEntityType): number {
+  if (type === 'storm' || type === 'reef' || type === 'whirlpool' || type === 'wind' || type === 'coral' || type === 'siren') return 80;
+  return 40;
 }
 
 export function getSeaEntityChaseSpeed(entity: Pick<SeaEntity, 'type' | 'eventId'>): number {
@@ -164,7 +174,7 @@ export function startVoyage(player: PlayerState, route: Route, destinationPortId
       type,
       x: Math.floor(Math.random() * (mapWidth - 100)) + 50,
       y: Math.floor(Math.random() * (mapHeight - 600)) + 200, // keep start and end clear
-      radius: type === 'storm' || type === 'reef' || type === 'siren' ? 80 : 40,
+      radius: getSeaEntityRadius(type),
       eventId: event.id,
       resolved: false
     });

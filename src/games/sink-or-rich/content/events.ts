@@ -165,6 +165,229 @@ export const GAME_EVENTS: GameEvent[] = [
     ]
   },
   {
+    id: 'event_shipwreck',
+    name: '沉船残骸',
+    description: '半截船身在浪里起伏，桅杆上还挂着破碎的旗帜。',
+    options: [
+      {
+        id: 'shipwreck_salvage',
+        label: '搜刮残骸',
+        resolve: (player, voyage) => {
+          const cargo = getRandomCargo();
+          const isSharpDebris = Math.random() < 0.35;
+          const damage = isSharpDebris ? 12 : 0;
+          return {
+            player: { ...player, currentHull: Math.max(0, player.currentHull - damage) },
+            voyage: { ...voyage, lootCargo: [...voyage.lootCargo, cargo] },
+            message: isSharpDebris
+              ? `你们从残骸里拖出 1 份 ${cargo.name}，但船底被碎木划伤，耐久 -12。`
+              : `你们从残骸里找到 1 份 ${cargo.name}。`
+          };
+        }
+      },
+      {
+        id: 'shipwreck_rescue',
+        label: '搜救幸存者',
+        resolve: (player, voyage) => {
+          const found = Math.random() < 0.6;
+          if (found) {
+            return {
+              player: { ...player, reputation: player.reputation + 12 },
+              voyage: { ...voyage, temporaryGold: voyage.temporaryGold + 90 },
+              message: '你们救起了两个幸存水手，他们的家族承诺到港后支付 90 金币。声望 +12。'
+            };
+          }
+          return {
+            player: { ...player, currentHull: Math.max(0, player.currentHull - 6) },
+            voyage,
+            message: '残骸已经空了，你们只捞到几块湿木板，靠近时还磕伤了船身，耐久 -6。'
+          };
+        }
+      },
+      {
+        id: 'shipwreck_mark',
+        label: '记录沉船坐标',
+        resolve: (player, voyage) => {
+          const hasNavigator = player.ownedCrew.some(c => c.id === 'crew_navigator');
+          return {
+            player: { ...player, reputation: player.reputation + (hasNavigator ? 8 : 3) },
+            voyage: { ...voyage, temporaryGold: voyage.temporaryGold + (hasNavigator ? 140 : 50) },
+            message: hasNavigator
+              ? '领航员准确记录了沉船坐标，海事行会会为这份海图支付 140 金币。声望 +8。'
+              : '你们粗略记下了沉船位置，到港后卖给了酒馆里的打捞队，获得 50 金币。声望 +3。'
+          };
+        }
+      }
+    ]
+  },
+  {
+    id: 'event_trade_winds',
+    name: '顺风带',
+    description: '海面出现整齐的白浪，风向正好推着船帆前进。',
+    options: [
+      {
+        id: 'winds_full_sail',
+        label: '升满帆追风',
+        resolve: (player, voyage) => {
+          const speed = player.currentShip?.speed || 1;
+          const reward = Math.floor(35 * speed);
+          const damage = speed >= 3 ? 0 : 6;
+          return {
+            player: { ...player, currentHull: Math.max(0, player.currentHull - damage) },
+            voyage: { ...voyage, temporaryGold: voyage.temporaryGold + reward },
+            message: damage > 0
+              ? `你们借风追上一批漂流货，预估到港可得 ${reward} 金币，但旧帆索吃不住力，耐久 -6。`
+              : `你们借风追上一批漂流货，预估到港可得 ${reward} 金币。`
+          };
+        }
+      },
+      {
+        id: 'winds_trim',
+        label: '稳住帆索',
+        resolve: (player, voyage) => {
+          const hasSailor = player.ownedCrew.some(c => c.id === 'crew_sailor');
+          return {
+            player: { ...player, reputation: player.reputation + (hasSailor ? 6 : 2) },
+            voyage: { ...voyage, temporaryGold: voyage.temporaryGold + (hasSailor ? 100 : 35) },
+            message: hasSailor
+              ? '水手把帆索修得漂亮，船队借风超越商路，到港可得 100 金币。声望 +6。'
+              : '你们谨慎调整帆索，只借到一段短风，到港可得 35 金币。声望 +2。'
+          };
+        }
+      },
+      {
+        id: 'winds_ignore',
+        label: '保持航向',
+        resolve: (player, voyage) => {
+          return { player, voyage, message: '你们没有冒险追风，保持原本航向继续前进。' };
+        }
+      }
+    ]
+  },
+  {
+    id: 'event_glowing_coral',
+    name: '发光珊瑚礁',
+    description: '夜色下，珊瑚像宝石一样发光，水下似乎藏着稀有药材。',
+    options: [
+      {
+        id: 'coral_harvest',
+        label: '采集珊瑚药材',
+        resolve: (player, voyage) => {
+          const medicine = CARGO_TYPES.find(c => c.id === 'cargo_medicine') || getRandomCargo();
+          const cargo: PlayerCargo = {
+            ...medicine,
+            actualBuyPrice: 0,
+            sourcePortId: 'unknown',
+            uid: `loot_coral_${Date.now()}_${Math.random()}`
+          };
+          return {
+            player: { ...player, currentHull: Math.max(0, player.currentHull - 10) },
+            voyage: { ...voyage, lootCargo: [...voyage.lootCargo, cargo] },
+            message: `你们采到了 1 份 ${cargo.name}，但船身擦过珊瑚，耐久 -10。`
+          };
+        }
+      },
+      {
+        id: 'coral_chart',
+        label: '绘制珊瑚航道',
+        resolve: (player, voyage) => {
+          const hasNavigator = player.ownedCrew.some(c => c.id === 'crew_navigator');
+          return {
+            player: { ...player, reputation: player.reputation + (hasNavigator ? 10 : 4) },
+            voyage: { ...voyage, temporaryGold: voyage.temporaryGold + (hasNavigator ? 120 : 45) },
+            message: hasNavigator
+              ? '领航员绘出了一条安全珊瑚航道，港口商会愿意支付 120 金币。声望 +10。'
+              : '你们记下了大概位置，到港卖给药商，获得 45 金币。声望 +4。'
+          };
+        }
+      },
+      {
+        id: 'coral_leave',
+        label: '绕开',
+        resolve: (player, voyage) => {
+          return { player, voyage, message: '珊瑚太密，你们选择绕开，没有损失。' };
+        }
+      }
+    ]
+  },
+  {
+    id: 'event_lost_fishermen',
+    name: '迷失渔民',
+    description: '一条小渔船在浪里打转，船上的人挥舞着破布求救。',
+    options: [
+      {
+        id: 'fishermen_rescue',
+        label: '救他们上船',
+        resolve: (player, voyage) => {
+          return {
+            player: { ...player, currentHull: Math.max(0, player.currentHull - 5), reputation: player.reputation + 10 },
+            voyage: { ...voyage, temporaryGold: voyage.temporaryGold + 70 },
+            message: '你们救下了渔民，拖船时耐久 -5。到港后他们凑出 70 金币答谢，声望 +10。'
+          };
+        }
+      },
+      {
+        id: 'fishermen_toll',
+        label: '索要带路费',
+        resolve: (player, voyage) => {
+          return {
+            player: { ...player, reputation: player.reputation - 4, bounty: player.bounty + 5 },
+            voyage: { ...voyage, temporaryGold: voyage.temporaryGold + 130 },
+            message: '你们强收了带路费，到港可得 130 金币，但这事传出去不太好听。声望 -4，通缉 +5。'
+          };
+        }
+      },
+      {
+        id: 'fishermen_ignore',
+        label: '不靠近',
+        resolve: (player, voyage) => {
+          return { player, voyage, message: '你们没有靠近，小渔船很快消失在浪后。' };
+        }
+      }
+    ]
+  },
+  {
+    id: 'event_navy_flotsam',
+    name: '军需漂箱',
+    description: '几只印着海军徽记的木箱漂在水面，封条还没完全泡烂。',
+    options: [
+      {
+        id: 'flotsam_open',
+        label: '撬开箱子',
+        resolve: (player, voyage) => {
+          const ammoGain = Math.random() < 0.5 ? 'ammo_normal' : 'ammo_chain';
+          return {
+            player: {
+              ...player,
+              bounty: player.bounty + 6,
+              ownedAmmo: { ...player.ownedAmmo, [ammoGain]: (player.ownedAmmo[ammoGain] || 0) + 2 }
+            },
+            voyage,
+            message: `箱子里有 2 发${ammoGain === 'ammo_chain' ? '链弹' : '普通炮弹'}。私拿军需会惹麻烦，通缉 +6。`
+          };
+        }
+      },
+      {
+        id: 'flotsam_return',
+        label: '保留封条交还',
+        resolve: (player, voyage) => {
+          return {
+            player: { ...player, reputation: player.reputation + 8 },
+            voyage: { ...voyage, temporaryGold: voyage.temporaryGold + 80 },
+            message: '你们把军需箱完整带回，港口军需官支付 80 金币，声望 +8。'
+          };
+        }
+      },
+      {
+        id: 'flotsam_leave',
+        label: '别碰军方东西',
+        resolve: (player, voyage) => {
+          return { player, voyage, message: '你们绕过军需箱，免得惹上官司。' };
+        }
+      }
+    ]
+  },
+  {
     id: 'event_damaged_merchant',
     name: '受损商船',
     description: '一艘商船正在冒烟，船员向你求救。',

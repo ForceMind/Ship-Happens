@@ -157,16 +157,23 @@ export const SeaMapCanvas: React.FC<Props> = ({ player, voyage, ship, onMove, is
       if (camY < 200) {
         ctx.fillStyle = '#c2b280'; // Sand color
         ctx.beginPath();
-        ctx.moveTo(0, 150 - camY);
-        for(let i=0; i<=vpWidth; i+=50) {
-          ctx.lineTo(i, 150 - camY + Math.sin(i/30 + time/1000)*10);
+        ctx.moveTo(-200, -20);
+        ctx.lineTo(-200, 150 - camY);
+        const coastStart = Math.floor((camX - 200) / 40) * 40;
+        const coastEnd = camX + vpWidth + 200;
+        for (let worldX = coastStart; worldX <= coastEnd; worldX += 40) {
+          const screenX = worldX - camX;
+          ctx.lineTo(screenX, 150 - camY + Math.sin(worldX / 30 + time / 1000) * 10);
         }
-        ctx.lineTo(vpWidth, 0);
-        ctx.lineTo(0, 0);
+        ctx.lineTo(vpWidth + 200, -20);
+        ctx.closePath();
         ctx.fill();
         
-        ctx.fillStyle = '#2d4c1e'; // Greenery
-        ctx.fillRect(0, 0, vpWidth, 100 - camY);
+        const greeneryBottom = 100 - camY;
+        if (greeneryBottom > 0) {
+          ctx.fillStyle = '#2d4c1e'; // Greenery
+          ctx.fillRect(-200, -20, vpWidth + 400, greeneryBottom + 20);
+        }
 
         // Draw Port City and Docks
         const destinationPosition = getVoyageDestinationPosition(currentVoyage);
@@ -323,6 +330,73 @@ function drawEntity(ctx: CanvasRenderingContext2D, type: SeaEntity['type'], even
         ctx.fillStyle = '#666';
         ctx.beginPath();
         ctx.moveTo(0, -r*0.5); ctx.lineTo(r*0.5, 0); ctx.lineTo(0, r*0.5); ctx.fill();
+        break;
+      case 'whirlpool':
+        ctx.strokeStyle = 'rgba(173, 232, 244, 0.85)';
+        ctx.lineWidth = 4;
+        ctx.rotate(time / 260);
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath();
+          ctx.arc(0, 0, r * (0.2 + i * 0.15), i * 0.7, Math.PI * 1.5 + i * 0.7);
+          ctx.stroke();
+        }
+        ctx.fillStyle = 'rgba(3, 37, 76, 0.65)';
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'wreck':
+        ctx.scale(r / 40, r / 40);
+        ctx.rotate(Math.sin(time / 600) * 0.12);
+        ctx.fillStyle = '#6b3f1d';
+        ctx.strokeStyle = '#2d1608';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-28, -4);
+        ctx.lineTo(18, -18);
+        ctx.lineTo(31, -3);
+        ctx.lineTo(12, 18);
+        ctx.lineTo(-22, 13);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeStyle = '#d7b377';
+        ctx.beginPath();
+        ctx.moveTo(-8, -23);
+        ctx.lineTo(-4, 16);
+        ctx.moveTo(-20, -6);
+        ctx.lineTo(15, -15);
+        ctx.stroke();
+        break;
+      case 'wind':
+        ctx.strokeStyle = 'rgba(210, 245, 255, 0.85)';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 4; i++) {
+          const y = -30 + i * 20;
+          ctx.beginPath();
+          ctx.moveTo(-r * 0.75, y + Math.sin(time / 260 + i) * 4);
+          ctx.bezierCurveTo(-20, y - 15, 20, y + 15, r * 0.75, y);
+          ctx.stroke();
+        }
+        break;
+      case 'coral':
+        ctx.scale(r / 40, r / 40);
+        ctx.strokeStyle = '#ff7aa2';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        for (let i = -2; i <= 2; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * 9, 20);
+          ctx.lineTo(i * 7, -4 - Math.abs(i) * 4);
+          ctx.lineTo(i * 13, -18 - Math.abs(i) * 2);
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#7bdff2';
+        ctx.beginPath();
+        ctx.arc(-16, 10, 8, 0, Math.PI * 2);
+        ctx.arc(18, 13, 7, 0, Math.PI * 2);
+        ctx.fill();
         break;
       case 'storm':
         ctx.strokeStyle = 'rgba(200, 200, 200, 0.6)';
