@@ -5,6 +5,8 @@ import {
   calculateRepairUnitCost,
   canStartVoyage,
   createDefaultPlayerState,
+  applyDebtMinuteInterest,
+  calculateDebtMinuteInterest,
   getEventEntityType,
   getEnemyCombatHint,
   getSeaEntityChaseSpeed,
@@ -20,7 +22,8 @@ import { SHIPS, ARMORS, CARGO_TYPES, ROUTES, PORTS } from '../content/data';
 import { GAME_EVENTS } from '../content/events';
 import { getStoryStatus } from '../content/story';
 import { clampCasinoPayout } from '../content/casino';
-import { createContractKey, generateLocalContracts } from '../content/contracts';
+import { calculateContractReward, createContractKey, generateLocalContracts } from '../content/contracts';
+import { getPortVisibleRoutes } from '../content/seaRegions';
 import { applyStoryUnlocks, FINALE_STORY_PROGRESS, getVisibleRoutes, hasSeaMonsterProof } from '../content/progression';
 
 describe('Game Logic Tests', () => {
@@ -29,6 +32,25 @@ describe('Game Logic Tests', () => {
     expect(player.gold).toBe(1000);
     expect(player.currentShip).toBeNull();
     expect(player.casinoProfitThisPort).toBe(0);
+    expect(player.debtInterestMinutes).toBe(0);
+    expect(player.debtGraceMinutes).toBe(0);
+  });
+
+  it('should apply online debt interest by minute with higher rates for larger loans', () => {
+    const smallDebtInterest = calculateDebtMinuteInterest(1000);
+    const largeDebtInterest = calculateDebtMinuteInterest(25000);
+    expect(largeDebtInterest).toBeGreaterThan(smallDebtInterest);
+
+    const player = createDefaultPlayerState();
+    player.debt = 25000;
+    const afterInterest = applyDebtMinuteInterest(player);
+    expect(afterInterest.debt).toBe(25125);
+    expect(afterInterest.debtInterestMinutes).toBe(1);
+
+    const gracePlayer = { ...player, debtGraceMinutes: 1 };
+    const afterGrace = applyDebtMinuteInterest(gracePlayer);
+    expect(afterGrace.debt).toBe(25000);
+    expect(afterGrace.debtGraceMinutes).toBe(0);
   });
 
   it('should calculate max hull correctly with armor', () => {
@@ -418,6 +440,18 @@ describe('Game Logic Tests', () => {
     expect(getVisibleRoutes(player).map(route => route.id)).not.toContain('route_monsoon');
   });
 
+  it('should offer different sea regions from different ports', () => {
+    const player = createDefaultPlayerState();
+    player.storyProgress = 6;
+    const royalRoutes = getPortVisibleRoutes(player, 'port_royal').map(route => route.id);
+    const tortugaRoutes = getPortVisibleRoutes(player, 'port_tortuga').map(route => route.id);
+
+    expect(royalRoutes).toContain('route_storm');
+    expect(royalRoutes).not.toContain('route_abyss');
+    expect(tortugaRoutes).toContain('route_abyss');
+    expect(tortugaRoutes).not.toEqual(royalRoutes);
+  });
+
   it('should apply story route and port unlocks without losing existing state', () => {
     const player = createDefaultPlayerState();
     player.unlockedRoutes = ['route_coastal'];
@@ -445,5 +479,15 @@ describe('Game Logic Tests', () => {
 
     expect(contracts).toHaveLength(3);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('should price same cargo contracts differently by destination port', () => {
+    const currentPort = PORTS.find(port => port.id === 'port_royal')!;
+    const tortuga = PORTS.find(port => port.id === 'port_tortuga')!;
+    const oriental = PORTS.find(port => port.id === 'port_oriental')!;
+    const silk = CARGO_TYPES.find(cargo => cargo.id === 'cargo_silk')!;
+
+    expect(calculateContractReward(currentPort, tortuga, silk, 2))
+      .not.toBe(calculateContractReward(currentPort, oriental, silk, 2));
   });
 });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlayerState, VoyageState, Route } from './types';
 import { loadGame, saveGame, resetGame } from './storage';
-import { startVoyage, moveShip, triggerEvent, resolveEventChoice, resolveCombatTurn, settleArrival, settleReturn, settleSinking, CombatAction, getVoyageDestinationPosition } from './engine';
+import { startVoyage, moveShip, triggerEvent, resolveEventChoice, resolveCombatTurn, settleArrival, settleReturn, settleSinking, CombatAction, getVoyageDestinationPosition, applyDebtMinuteInterest } from './engine';
 
 import { TitleScreen } from './components/TitleScreen';
 import { PortScreen } from './components/PortScreen';
@@ -43,6 +43,19 @@ export const SinkOrRichGame: React.FC = () => {
   useEffect(() => {
     if (player) saveGame(player, voyage);
   }, [player, voyage]);
+
+  useEffect(() => {
+    if (!player || (player.debt ?? 0) <= 0) return;
+
+    const timerId = window.setInterval(() => {
+      setPlayer(currentPlayer => {
+        if (!currentPlayer || (currentPlayer.debt ?? 0) <= 0) return currentPlayer;
+        return applyDebtMinuteInterest(currentPlayer);
+      });
+    }, 60000);
+
+    return () => window.clearInterval(timerId);
+  }, [(player?.debt ?? 0) > 0]);
 
   if (!player) return null;
 

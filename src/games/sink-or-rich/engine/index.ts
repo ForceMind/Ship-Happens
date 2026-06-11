@@ -81,6 +81,8 @@ export function createDefaultPlayerState(): PlayerState {
     activeContract: null,
     rescuedByGuild: false,
     debt: 0,
+    debtInterestMinutes: 0,
+    debtGraceMinutes: 0,
     storyProgress: 0,
     unlockedRoutes: ['route_coastal'],
     unlockedPorts: ['port_royal', 'port_tortuga'],
@@ -140,6 +142,41 @@ export function calculateRepairCost(player: PlayerState): number {
   else if (player.bounty > 50) cost *= 1.2;
 
   return Math.floor(cost);
+}
+
+export function getDebtInterestRatePerMinute(debt: number): number {
+  if (debt <= 0) return 0;
+  if (debt <= 2000) return 0.0012;
+  if (debt <= 10000) return 0.002;
+  if (debt <= 20000) return 0.0032;
+  return 0.005;
+}
+
+export function calculateDebtMinuteInterest(debt: number): number {
+  const rate = getDebtInterestRatePerMinute(debt);
+  if (rate <= 0) return 0;
+  return Math.max(1, Math.floor(debt * rate));
+}
+
+export function applyDebtMinuteInterest(player: PlayerState): PlayerState {
+  if (player.debt <= 0) {
+    return { ...player, debtInterestMinutes: 0, debtGraceMinutes: 0 };
+  }
+
+  if (player.debtGraceMinutes > 0) {
+    return {
+      ...player,
+      debtGraceMinutes: Math.max(0, player.debtGraceMinutes - 1),
+      debtInterestMinutes: player.debtInterestMinutes + 1,
+    };
+  }
+
+  const interest = calculateDebtMinuteInterest(player.debt);
+  return {
+    ...player,
+    debt: player.debt + interest,
+    debtInterestMinutes: player.debtInterestMinutes + 1,
+  };
 }
 
 export function canStartVoyage(player: PlayerState): boolean {
@@ -653,13 +690,6 @@ export function settleArrival(player: import('../types').PlayerState, voyage: im
   p.reputation += routeRep;
   msg.push(`航行成功奖励: +${routeRep} 声望`);
 
-  // Debt interest
-  if (p.debt > 0) {
-    const interest = Math.floor(p.debt * (voyage.route ? voyage.route.totalNodes * 0.01 : 0.05));
-    p.debt += interest;
-    msg.push(`银行利息结算: 债务增加 ${interest} 金币`);
-  }
-
   msg.push(`当前通缉值: ${p.bounty}, 声望: ${p.reputation}, 债务: ${p.debt}`);
 
   p.activeContract = null;
@@ -694,13 +724,6 @@ export function settleReturn(player: PlayerState, voyage: VoyageState): { player
   p.gold += adventureIncome;
   msg.push(`带回冒险收入 (70%): +${adventureIncome} 金币`);
 
-  // Debt interest
-  if (p.debt > 0) {
-    const interest = Math.floor(p.debt * (voyage.route ? Math.max(1, voyage.route.totalNodes * 0.005) : 0.02));
-    p.debt += interest;
-    msg.push(`银行利息结算(返航折扣): 债务增加 ${interest} 金币`);
-  }
-
   msg.push(`当前通缉值: ${p.bounty}, 声望: ${p.reputation}, 债务: ${p.debt}`);
 
   p.cargo = [];
@@ -732,13 +755,6 @@ export function settleSinking(player: PlayerState): { player: PlayerState, resul
     p.gold = Math.max(0, p.gold - p.activeContract.penalty);
     p.reputation -= 10;
     msg.push(`合同违约: -${p.activeContract.penalty} 金币, -10 声望`);
-  }
-
-  // Debt interest
-  if (p.debt > 0) {
-    const interest = Math.floor(p.debt * 0.05); // 5% flat penalty for sinking
-    p.debt += interest;
-    msg.push(`银行利息结算(沉船惩罚): 债务增加 ${interest} 金币`);
   }
 
   p.cargo = [];

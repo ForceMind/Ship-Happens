@@ -40,6 +40,12 @@ export function loadGame(): { player: PlayerState; voyage: VoyageState | null } 
       if (typeof player.casinoProfitThisPort !== 'number') {
         player.casinoProfitThisPort = 0;
       }
+      if (typeof player.debtInterestMinutes !== 'number') {
+        player.debtInterestMinutes = 0;
+      }
+      if (typeof player.debtGraceMinutes !== 'number') {
+        player.debtGraceMinutes = 0;
+      }
       if (typeof player.storyProgress !== 'number') {
         player.storyProgress = 0;
       }
