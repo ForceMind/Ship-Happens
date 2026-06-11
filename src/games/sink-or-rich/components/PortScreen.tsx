@@ -4,7 +4,7 @@ import { SHIPS, CREW_MEMBERS, AMMO_TYPES, ARMORS, CARGO_TYPES, PORTS, ROUTES } f
 import { getStoryStatus } from '../content/story';
 import { generateLocalContracts } from '../content/contracts';
 import { addStoryFlags, FINALE_STORY_PROGRESS, hasStoryFlag, isRouteUnlockAvailable, isRouteVisible } from '../content/progression';
-import { calculateCargoUsed, calculateDebtMinuteInterest, calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage } from '../engine';
+import { calculateCargoUsed, getDebtInterestRatePerMinute, calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage } from '../engine';
 import { Modal } from './Modal';
 import styles from './styles.module.css';
 
@@ -362,8 +362,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
   };
 
   const creditLimit = 2000 + player.reputation * 100;
-  const currentMinuteInterest = calculateDebtMinuteInterest(player.debt);
-  const graceCost = Math.max(150, Math.floor(player.debt * 0.04));
+  const currentDebtRate = getDebtInterestRatePerMinute(player.debt);
 
   const doBorrow = () => {
     if (player.debt < creditLimit) {
@@ -381,17 +380,6 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         debt: nextDebt,
         debtInterestMinutes: nextDebt > 0 ? player.debtInterestMinutes : 0,
         debtGraceMinutes: nextDebt > 0 ? player.debtGraceMinutes : 0,
-      });
-    }
-  };
-
-  const buyDebtGrace = () => {
-    if (player.debt > 0 && player.gold >= graceCost) {
-      setPlayer({
-        ...player,
-        gold: player.gold - graceCost,
-        debtGraceMinutes: player.debtGraceMinutes + 3,
-        reputation: player.reputation + 1,
       });
     }
   };
@@ -716,21 +704,13 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         {activeTab === 'bank' && (
           <div>
             <h3 style={{ color: '#f6d365' }}>大洋银行</h3>
-            <p style={{ marginBottom: '10px' }}>借款后在线每分钟结算一次利息；离开游戏时不会继续计息。债务越高，每分钟利息越高。</p>
             <div className={styles.statItem} style={{ marginBottom: '15px' }}>
               <span className={styles.statLabel}>当前债务</span>
               <span className={styles.statValue} style={{color: player.debt > 0 ? '#f44336' : '#fff'}}>💰 {player.debt}</span>
             </div>
             <div className={styles.statItem} style={{ marginBottom: '15px' }}>
-              <span className={styles.statLabel}>每分钟利息</span>
-              <span className={styles.statValue} style={{color: currentMinuteInterest > 0 ? '#f44336' : '#fff'}}>
-                💰 {player.debtGraceMinutes > 0 ? 0 : currentMinuteInterest}
-                {player.debtGraceMinutes > 0 ? `（缓期剩余 ${player.debtGraceMinutes} 分钟）` : ''}
-              </span>
-            </div>
-            <div className={styles.statItem} style={{ marginBottom: '15px' }}>
-              <span className={styles.statLabel}>已计息时间</span>
-              <span className={styles.statValue}>{player.debtInterestMinutes} 分钟</span>
+              <span className={styles.statLabel}>利率</span>
+              <span className={styles.statValue}>{(currentDebtRate * 100).toFixed(2)}% / 分钟</span>
             </div>
             <div className={styles.statItem} style={{ marginBottom: '15px' }}>
               <span className={styles.statLabel}>信用额度</span>
@@ -755,9 +735,6 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                   暂无债务
                 </button>
               )}
-              <button className={styles.btnSecondary} disabled={player.debt <= 0 || player.gold < graceCost} onClick={buyDebtGrace}>
-                缓期 3 分钟 {graceCost}
-              </button>
             </div>
             {player.debt > 20000 && <p style={{ color: '#f44336', marginTop: '10px' }}>⚠️ 警告：您的债务已超标，讨债佣兵可能在海上拦截您！</p>}
           </div>
