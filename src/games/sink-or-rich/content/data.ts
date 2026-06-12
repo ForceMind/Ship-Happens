@@ -243,13 +243,27 @@ export const CONTRACTS: Contract[] = [
 ];
 
 export const ROUTES: Route[] = [
-  { id: 'route_coastal', name: '近海航线', totalNodes: 5, riskMultiplier: 0.8, tradeMultiplier: 1.0, adventureMultiplier: 1.0, hullLossPerNode: 3, description: '安全但收益低。' },
-  { id: 'route_storm', name: '暴风航线', totalNodes: 7, riskMultiplier: 1.2, tradeMultiplier: 1.5, adventureMultiplier: 1.4, hullLossPerNode: 4, description: '风险和收益都适中。' },
-  { id: 'route_black_tide', name: '黑潮航线', totalNodes: 9, riskMultiplier: 1.8, tradeMultiplier: 2.2, adventureMultiplier: 2.0, hullLossPerNode: 5, description: '高风险高收益。' },
-  { id: 'route_coral', name: '珊瑚群岛航线', totalNodes: 10, riskMultiplier: 2.0, tradeMultiplier: 2.6, adventureMultiplier: 2.4, hullLossPerNode: 5, description: '浅滩密布，适合建立中继补给线。' },
-  { id: 'route_monsoon', name: '季风远洋航线', totalNodes: 11, riskMultiplier: 2.2, tradeMultiplier: 3.0, adventureMultiplier: 2.7, hullLossPerNode: 6, description: '借季风穿过远洋，利润丰厚但返航窗口很短。' },
-  { id: 'route_legend', name: '传说航线', totalNodes: 12, riskMultiplier: 2.4, tradeMultiplier: 3.5, adventureMultiplier: 3.0, hullLossPerNode: 6, description: '极高风险，只有完成主线开拓的船长才看得到完整海图。' },
-  { id: 'route_abyss', name: '深渊航线', totalNodes: 20, riskMultiplier: 5.0, tradeMultiplier: 10.0, adventureMultiplier: 10.0, hullLossPerNode: 15, description: '只有亡命之徒和真正的海神才敢踏足的死地。这里栖息着终极怪物。' },
+  // Novice Area / Caribbean
+  { id: 'route_royal_tortuga_1', name: '皇家-龟岛走私小径', fromPortId: 'port_royal', toPortId: 'port_tortuga', totalNodes: 5, riskMultiplier: 0.8, tradeMultiplier: 1.0, adventureMultiplier: 1.0, hullLossPerNode: 3, description: '安全但收益低，适合新手倒卖基础物资。' },
+  { id: 'route_royal_tortuga_2', name: '黑旗暗礁带', fromPortId: 'port_royal', toPortId: 'port_tortuga', totalNodes: 3, riskMultiplier: 1.8, tradeMultiplier: 1.2, adventureMultiplier: 1.5, hullLossPerNode: 6, description: '路程极短但遍布暗礁和海盗，适合急需销赃的亡命徒。' },
+  { id: 'route_royal_nassau', name: '总督府-自由港巡航线', fromPortId: 'port_royal', toPortId: 'port_nassau', totalNodes: 6, riskMultiplier: 1.0, tradeMultiplier: 1.2, adventureMultiplier: 1.1, hullLossPerNode: 3, description: '皇家海军巡逻密集，带违禁品容易被抓。' },
+  { id: 'route_royal_cartagena', name: '皇家-要塞官方航道', fromPortId: 'port_royal', toPortId: 'port_cartagena', totalNodes: 7, riskMultiplier: 1.2, tradeMultiplier: 1.5, adventureMultiplier: 1.2, hullLossPerNode: 4, description: '黄金航路的一部分，收益适中，海况平稳。' },
+  { id: 'route_tortuga_nassau', name: '海盗群岛内海航线', fromPortId: 'port_tortuga', toPortId: 'port_nassau', totalNodes: 5, riskMultiplier: 1.5, tradeMultiplier: 1.4, adventureMultiplier: 1.6, hullLossPerNode: 4, description: '海盗横行，非常适合黑吃黑，或者被黑吃黑。' },
+  { id: 'route_nassau_cartagena', name: '拿骚-卡塔赫纳贸易风带', fromPortId: 'port_nassau', toPortId: 'port_cartagena', totalNodes: 8, riskMultiplier: 1.1, tradeMultiplier: 1.6, adventureMultiplier: 1.3, hullLossPerNode: 4, description: '路途遥远但风平浪静，适合大宗正经贸易。' },
+  { id: 'route_tortuga_cartagena', name: '深水火药走私线', fromPortId: 'port_tortuga', toPortId: 'port_cartagena', totalNodes: 6, riskMultiplier: 2.0, tradeMultiplier: 2.2, adventureMultiplier: 1.8, hullLossPerNode: 5, description: '极高风险，极高利润，专门用来走私军火和违禁品。' },
+
+  // Mid Area / Atlantic to Azores
+  { id: 'route_royal_azores', name: '北大西洋暖流航线', fromPortId: 'port_royal', toPortId: 'port_azores', totalNodes: 10, riskMultiplier: 1.6, tradeMultiplier: 2.5, adventureMultiplier: 2.0, hullLossPerNode: 5, description: '漫长而危险的远洋起点，海况多变。' },
+  { id: 'route_cartagena_azores', name: '无风带黄金航线', fromPortId: 'port_cartagena', toPortId: 'port_azores', totalNodes: 12, riskMultiplier: 2.5, tradeMultiplier: 3.5, adventureMultiplier: 2.5, hullLossPerNode: 6, description: '最容易在无风带饿死，但成功穿越能带来极其丰厚的利润。' },
+  { id: 'route_nassau_azores', name: '冒险者遗骨航路', fromPortId: 'port_nassau', toPortId: 'port_azores', totalNodes: 9, riskMultiplier: 2.2, tradeMultiplier: 2.8, adventureMultiplier: 2.8, hullLossPerNode: 7, description: '速度快但遍布漩涡和巨型海怪的危险捷径。' },
+
+  // Late Area / East
+  { id: 'route_azores_oriental', name: '好望角季风远征线', fromPortId: 'port_azores', toPortId: 'port_oriental', totalNodes: 15, riskMultiplier: 2.8, tradeMultiplier: 4.5, adventureMultiplier: 3.5, hullLossPerNode: 6, description: '跨越半个地球的传奇贸易路线，九死一生。' },
+  { id: 'route_azores_madagascar', name: '好望角背面阴影航路', fromPortId: 'port_azores', toPortId: 'port_madagascar', totalNodes: 14, riskMultiplier: 3.5, tradeMultiplier: 5.0, adventureMultiplier: 4.0, hullLossPerNode: 8, description: '凶险无比，直达隐秘海盗王避风港。' },
+  { id: 'route_oriental_madagascar', name: '印度洋季风走廊', fromPortId: 'port_oriental', toPortId: 'port_madagascar', totalNodes: 8, riskMultiplier: 2.0, tradeMultiplier: 2.5, adventureMultiplier: 2.5, hullLossPerNode: 5, description: '后期两大港口之间的主要贸易线。' },
+
+  // End Game
+  { id: 'route_tortuga_madagascar', name: '海盗王深渊传说航线', fromPortId: 'port_tortuga', toPortId: 'port_madagascar', totalNodes: 20, riskMultiplier: 5.0, tradeMultiplier: 10.0, adventureMultiplier: 10.0, hullLossPerNode: 12, description: '【最终挑战】贯穿深渊的终极传说，只有最顶级的战舰才敢染指。' },
 ];
 
 export const ENEMIES: Enemy[] = [

@@ -241,6 +241,7 @@ export const SinkOrRichGame: React.FC = () => {
           onShipMove={handleShipMove}
           onReturn={handleReturn}
           onResolveEvent={handleResolveEvent}
+          onClearEventMessage={() => setVoyage({ ...voyage, eventResultMessage: null })}
         />
       )}
       {screen === 'combat' && voyage && (

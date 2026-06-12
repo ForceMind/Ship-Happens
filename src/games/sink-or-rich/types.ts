@@ -73,6 +73,8 @@ export interface Contract {
 export interface Route {
   id: string;
   name: string;
+  fromPortId: string;
+  toPortId: string;
   totalNodes: number;
   riskMultiplier: number;
   tradeMultiplier: number;
@@ -104,6 +106,7 @@ export interface GameEvent {
   description: string;
   probability?: number;
   options: EventOptionChoice[];
+  availableRoutes?: string[];
 }
 
 export type EnemyType = 'pirate' | 'monster' | 'patrol';
@@ -174,6 +177,8 @@ export interface SeaEntity {
   type: SeaEntityType;
   x: number;
   y: number;
+  spawnX?: number;
+  spawnY?: number;
   radius: number;
   eventId: string;
   resolved: boolean;
@@ -199,4 +204,5 @@ export interface VoyageState {
   log: string[];
   combatState: CombatState | null;
   currentEvent: GameEvent | null;
+  eventResultMessage?: string | null;
 }

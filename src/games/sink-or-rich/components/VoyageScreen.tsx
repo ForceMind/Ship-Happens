@@ -11,9 +11,10 @@ interface Props {
   onShipMove: (dx: number, dy: number) => void;
   onReturn: () => void;
   onResolveEvent: (eventId: string, choiceId: string) => void;
+  onClearEventMessage: () => void;
 }
 
-export const VoyageScreen: React.FC<Props> = ({ player, voyage, onShipMove, onReturn, onResolveEvent }) => {
+export const VoyageScreen: React.FC<Props> = ({ player, voyage, onShipMove, onReturn, onResolveEvent, onClearEventMessage }) => {
   const [modal, setModal] = React.useState<{title: string, msg: string, onConfirm: () => void, onCancel: () => void} | null>(null);
   const maxHull = calculateMaxHull(player.currentShip, player.ownedArmor);
   const hullPercent = Math.max(0, Math.min(100, (player.currentHull / maxHull) * 100));
@@ -92,7 +93,9 @@ export const VoyageScreen: React.FC<Props> = ({ player, voyage, onShipMove, onRe
         }}>
           返航
         </button>
-        <div style={{ fontSize: '0.9rem', color: '#ccc' }}>使用 WASD 或 方向键 驾驶船只</div>
+        <div style={{ fontSize: '0.9rem', color: '#ccc' }}>
+          {typeof window !== 'undefined' && 'ontouchstart' in window ? '滑动屏幕驾驶船只' : '使用 WASD 或 方向键 驾驶船只'}
+        </div>
       </div>
 
       <div style={{ marginTop: '20px' }}>
@@ -110,6 +113,14 @@ export const VoyageScreen: React.FC<Props> = ({ player, voyage, onShipMove, onRe
           message={modal.msg}
           onConfirm={modal.onConfirm}
           onCancel={modal.onCancel}
+        />
+      )}
+
+      {voyage.eventResultMessage && (
+        <Modal
+          title="事件结果"
+          message={voyage.eventResultMessage}
+          onConfirm={onClearEventMessage}
         />
       )}
     </div>

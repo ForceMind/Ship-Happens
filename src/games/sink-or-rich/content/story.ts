@@ -24,12 +24,12 @@ export function getStoryStatus(player: PlayerState): StoryStatus | null {
   }
 
   if (storyProgress === 1) {
-    const canAdvance = hasStoryFlag(player, 'sailed_route_coastal');
+    const canAdvance = player.discoveredEvents.some(e => e.startsWith('sailed_route_'));
     return {
       title: canAdvance ? '主线：近海试航完成' : '主线目标：完成近海试航',
       description: canAdvance
         ? '你的船已经证明还能穿过近海，拿骚自由港愿意接纳你的补给线。'
-        : '驾驶任意船只完成一次近海航线，把第一条补给线跑通。',
+        : '驾驶任意船只完成一次出海航行，把第一条补给线跑通。',
       objective: canAdvance ? '返回港口汇报近海试航。' : '尚未完成近海航线。',
       cta: '汇报试航',
       canAdvance,
@@ -38,9 +38,10 @@ export function getStoryStatus(player: PlayerState): StoryStatus | null {
 
   if (storyProgress === 2) {
     const targetGold = 3000;
-    const canAdvance = hasStoryFlag(player, 'sailed_route_storm') && player.gold >= targetGold;
+    const hasSailedMidRoute = player.discoveredEvents.some(e => e.includes('_azores'));
+    const canAdvance = hasSailedMidRoute && player.gold >= targetGold;
     const objectives: string[] = [];
-    if (!hasStoryFlag(player, 'sailed_route_storm')) objectives.push('完成暴风航线');
+    if (!hasSailedMidRoute) objectives.push('抵达亚速尔中继站');
     if (player.gold < targetGold) objectives.push(`金币 ${player.gold} / ${targetGold}`);
     return {
       title: canAdvance ? '主线：暴风航线开拓完成' : '主线目标：开拓暴风航线',
@@ -56,14 +57,14 @@ export function getStoryStatus(player: PlayerState): StoryStatus | null {
   if (storyProgress === 3) {
     const hasPiratePath = player.bounty >= 100;
     const hasGovernorPath = player.reputation >= 100;
-    const sailedBlackTide = hasStoryFlag(player, 'sailed_route_black_tide');
+    const sailedBlackTide = player.discoveredEvents.some(e => e.includes('azores_oriental') || e.includes('azores_madagascar'));
     const canAdvance = sailedBlackTide && (hasPiratePath || hasGovernorPath);
     let pathText = '穿过黑潮之后，提高声望可走帝国路线，提高通缉可走海盗路线。';
     if (hasPiratePath && hasGovernorPath) pathText = '帝国和海盗都盯上了你，你可以亲自选择未来。';
     else if (hasPiratePath) pathText = '你的通缉令已经传遍海域，海盗公会向你递来了黑色邀请。';
     else if (hasGovernorPath) pathText = '你的声望已经足够耀眼，帝国总督府向你递来了正式委任。';
     const objectives: string[] = [];
-    if (!sailedBlackTide) objectives.push('完成黑潮航线');
+    if (!sailedBlackTide) objectives.push('完成好望角远征航线');
     if (!hasPiratePath && !hasGovernorPath) objectives.push(`声望 ${player.reputation} / 100，通缉 ${player.bounty} / 100`);
 
     return {
@@ -85,8 +86,8 @@ export function getStoryStatus(player: PlayerState): StoryStatus | null {
     return {
       title: completedBranchQuest ? `主线：${branchName}完成` : `主线目标：${branchName}`,
       description: player.storyBranch === 'pirate'
-        ? '海盗公会给了你半张藏宝图。去密室接下任务，再到东方明珠港寻找海盗王遗藏。'
-        : '帝国总督府等着你接女王远东敕令。接下任务后，把敕令送到东方明珠港。',
+        ? '海盗公会给了你半张藏宝图。去【龟岛】的海盗公会密室接下任务，再到【东方明珠港】寻找海盗王遗藏。'
+        : '帝国总督府等着你接女王远东敕令。去【皇家港】的总督府接下任务，把敕令护送到【东方明珠港】。',
       objective: completedBranchQuest ? '阵营主线任务已完成，远洋补给线即将展开。' : `尚未完成${branchName}。`,
       cta: '展开远洋补给线',
       canAdvance: completedBranchQuest,
@@ -94,17 +95,13 @@ export function getStoryStatus(player: PlayerState): StoryStatus | null {
   }
 
   if (storyProgress === 5) {
-    const sailedCoral = hasStoryFlag(player, 'sailed_route_coral');
-    const sailedMonsoon = hasStoryFlag(player, 'sailed_route_monsoon');
-    const sailedLegend = hasStoryFlag(player, 'sailed_route_legend');
+    const sailedEndGame = player.discoveredEvents.some(e => e.includes('oriental_madagascar') || e.includes('tortuga_madagascar'));
     const monsterProof = hasSeaMonsterProof(player);
     const visitedPorts = PORTS.filter(port => hasStoryFlag(player, `visited_${port.id}`));
     const targetVisitedPorts = 5;
-    const canAdvance = sailedCoral && sailedMonsoon && sailedLegend && monsterProof && visitedPorts.length >= targetVisitedPorts;
+    const canAdvance = sailedEndGame && monsterProof && visitedPorts.length >= targetVisitedPorts;
     const objectives: string[] = [];
-    if (!sailedCoral) objectives.push('完成珊瑚群岛航线');
-    if (!sailedMonsoon) objectives.push('完成季风远洋航线');
-    if (!sailedLegend) objectives.push('完成传说航线');
+    if (!sailedEndGame) objectives.push('完成后期或传说航线');
     if (!monsterProof) objectives.push('带回一份海怪证据');
     if (visitedPorts.length < targetVisitedPorts) objectives.push(`抵达不同港口 ${visitedPorts.length} / ${targetVisitedPorts}`);
     return {

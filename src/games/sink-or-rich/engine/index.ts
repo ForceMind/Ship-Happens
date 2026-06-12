@@ -41,13 +41,15 @@ function getSeaEntityRadius(type: SeaEntityType): number {
 }
 
 export function getSeaEntityChaseSpeed(entity: Pick<SeaEntity, 'type' | 'eventId'>): number {
-  if (entity.type === 'pirate') return 2.5;
-  if (entity.type !== 'monster') return 0;
-
-  if (entity.eventId === 'event_giant_octopus') return 1.4;
-  if (entity.eventId === 'event_sea_serpent') return 3.2;
-  if (entity.eventId === 'event_white_whale') return 0.9;
-  if (entity.eventId === 'event_leviathan') return 2.2;
+  if (entity.type === 'pirate') {
+    if (entity.eventId === 'event_pirate_fast') return 4.0; // very fast
+    return 3.5; // much faster than before
+  }
+  if (entity.type === 'monster') {
+    if (entity.eventId === 'event_leviathan' || entity.eventId === 'event_sea_serpent') return 3.0; // End-game monsters
+    return 2.5;
+  }
+  if (entity.type === 'patrol') return 3.2; // fast enough to catch merchants
   return 2.0;
 }
 
@@ -85,7 +87,7 @@ export function createDefaultPlayerState(): PlayerState {
     debtInterestMinutes: 0,
     debtGraceMinutes: 0,
     storyProgress: 0,
-    unlockedRoutes: ['route_coastal'],
+    unlockedRoutes: ['route_royal_tortuga_1'],
     unlockedPorts: ['port_royal', 'port_tortuga'],
     marketMultiplier: 1.0,
     casinoProfitThisPort: 0,
@@ -201,9 +203,11 @@ export function startVoyage(player: PlayerState, route: Route, destinationPortId
   for (let i = 0; i < entityCount; i++) {
     const eventPool = GAME_EVENTS.filter(event => {
       if (FORCED_EVENT_IDS.has(event.id)) return false;
+      if (event.availableRoutes && event.availableRoutes.length > 0 && !event.availableRoutes.includes(route.id)) return false;
       const type = getEventEntityType(event.id);
       return !(hasMonsterEntity && type === 'monster');
     });
+    if (eventPool.length === 0) continue;
     const event = eventPool[Math.floor(Math.random() * eventPool.length)];
     const type = getEventEntityType(event.id);
     if (type === 'monster') hasMonsterEntity = true;
@@ -213,6 +217,8 @@ export function startVoyage(player: PlayerState, route: Route, destinationPortId
       type,
       x: Math.floor(Math.random() * (mapWidth - 100)) + 50,
       y: Math.floor(Math.random() * (mapHeight - 600)) + 200, // keep start and end clear
+      spawnX: 0, // Will be set properly during first aggro if we wanted, but let's just initialize
+      spawnY: 0,
       radius: getSeaEntityRadius(type),
       eventId: event.id,
       resolved: false
@@ -314,17 +320,30 @@ export function moveShip(player: PlayerState, voyage: VoyageState, dx: number, d
     let newEntity = { ...entity };
 
     // Chasing logic
-    if (!newEntity.resolved && (newEntity.type === 'pirate' || newEntity.type === 'monster')) {
+    if (!newEntity.resolved && (newEntity.type === 'pirate' || newEntity.type === 'monster' || newEntity.type === 'patrol')) {
+      if (newEntity.spawnX === undefined) {
+        newEntity.spawnX = newEntity.x;
+        newEntity.spawnY = newEntity.y;
+      }
+
       const dxEnemy = newX - newEntity.x;
       const dyEnemy = newY - newEntity.y;
       const dist = Math.sqrt(dxEnemy * dxEnemy + dyEnemy * dyEnemy);
 
       // Aggro radius 400px
       if (dist < 400 && dist > 5) {
-        const baseSpeed = getSeaEntityChaseSpeed(newEntity);
-        const actualTimeScale = Math.max(0.1, timeScale); // ensure they move slightly even if player barely moves
-        newEntity.x += (dxEnemy / dist) * baseSpeed * actualTimeScale;
-        newEntity.y += (dyEnemy / dist) * baseSpeed * actualTimeScale;
+        // Monster territory mechanic: give up after 800px
+        const distFromSpawn = Math.sqrt(Math.pow(newEntity.x - (newEntity.spawnX || 0), 2) + Math.pow(newEntity.y - (newEntity.spawnY || 0), 2));
+        if (newEntity.type === 'monster' && distFromSpawn > 800) {
+          // Give up chasing and disappear
+          newEntity.resolved = true;
+          newVoyage.log = [...(newVoyage.log || []), '海怪放弃了追击，潜入了深海。'];
+        } else {
+          const baseSpeed = getSeaEntityChaseSpeed(newEntity);
+          const actualTimeScale = Math.max(0.1, timeScale); // ensure they move slightly even if player barely moves
+          newEntity.x += (dxEnemy / dist) * baseSpeed * actualTimeScale;
+          newEntity.y += (dyEnemy / dist) * baseSpeed * actualTimeScale;
+        }
       }
     }
 
@@ -404,7 +423,9 @@ export function resolveEventChoice(
   }
 
   // Check sinking
-  return checkSinking(result.player, result.voyage);
+  const finalResult = checkSinking(result.player, result.voyage);
+  finalResult.voyage.eventResultMessage = result.message;
+  return finalResult;
 }
 
 export function checkSinking(player: PlayerState, voyage: VoyageState): { player: PlayerState, voyage: VoyageState } {

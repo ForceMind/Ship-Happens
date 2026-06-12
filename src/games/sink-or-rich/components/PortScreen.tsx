@@ -4,7 +4,7 @@ import { SHIPS, CREW_MEMBERS, AMMO_TYPES, ARMORS, CARGO_TYPES, PORTS, ROUTES } f
 import { getStoryStatus } from '../content/story';
 import { generateLocalContracts } from '../content/contracts';
 import { addStoryFlags, FINALE_STORY_PROGRESS, hasStoryFlag, isRouteUnlockAvailable, isRouteVisible } from '../content/progression';
-import { calculateCargoUsed, getDebtMonthlyInterestRate, calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage } from '../engine';
+import { calculateCargoUsed, getDebtMonthlyInterestRate, calculateDebtMinuteInterest, calculateMaxHull, calculateRepairCost, calculateRepairUnitCost, canStartVoyage } from '../engine';
 import { Modal } from './Modal';
 import styles from './styles.module.css';
 
@@ -18,9 +18,15 @@ interface Props {
 }
 
 export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSelect, onBankrupt, onGoToCasino, onGoToStory }) => {
-  const [activeTab, setActiveTab] = useState<'ship'|'crew'|'ammo'|'armor'|'cargo'|'contract'|'repair'|'bank'|'building'>('ship');
+  const [activeTab, setActiveTab] = useState<'ship'|'crew'|'ammo'|'armor'|'cargo'|'contract'|'repair'|'bank'|'building'>(player.currentShip ? 'cargo' : 'ship');
   const [modal, setModal] = useState<{title: string, msg: string, onConfirm: () => void, onCancel?: () => void} | null>(null);
   const [localContracts, setLocalContracts] = useState<import('../types').Contract[]>([]);
+
+  useEffect(() => {
+    if (!player.currentShip && !['ship', 'bank', 'building'].includes(activeTab)) {
+      setActiveTab('ship');
+    }
+  }, [player.currentShip, activeTab]);
 
   const currentPort = PORTS.find(p => p.id === (player.currentPortId || 'port_royal')) || PORTS[0];
 
@@ -369,7 +375,13 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
 
   const doBorrow = () => {
     if (borrowAmount > 0) {
-      setPlayer({ ...player, gold: player.gold + borrowAmount, debt: player.debt + borrowAmount });
+      const initialInterest = calculateDebtMinuteInterest(player.debt + borrowAmount);
+      setPlayer({ 
+        ...player, 
+        gold: player.gold + borrowAmount, 
+        debt: player.debt + borrowAmount + initialInterest,
+        debtInterestMinutes: player.debtInterestMinutes + 1 
+      });
     }
   };
 
@@ -443,12 +455,16 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
 
       <div style={{ display: 'flex', overflowX: 'auto', gap: '5px', marginBottom: '15px', paddingBottom: '10px' }}>
         <button className={activeTab === 'ship' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('ship')}>船只</button>
-        <button className={activeTab === 'crew' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('crew')}>船员</button>
-        <button className={activeTab === 'ammo' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('ammo')}>炮弹</button>
-        <button className={activeTab === 'armor' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('armor')}>护甲</button>
-        <button className={activeTab === 'cargo' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('cargo')}>货物</button>
-        <button className={activeTab === 'contract' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('contract')}>合同</button>
-        <button className={activeTab === 'repair' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('repair')}>维修</button>
+        {player.currentShip && (
+          <>
+            <button className={activeTab === 'crew' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('crew')}>船员</button>
+            <button className={activeTab === 'ammo' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('ammo')}>炮弹</button>
+            <button className={activeTab === 'armor' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('armor')}>护甲</button>
+            <button className={activeTab === 'cargo' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('cargo')}>货物</button>
+            <button className={activeTab === 'contract' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('contract')}>合同</button>
+            <button className={activeTab === 'repair' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('repair')}>维修</button>
+          </>
+        )}
         <button className={activeTab === 'bank' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('bank')}>银行</button>
         <button className={activeTab === 'building' ? styles.btnPrimary : styles.btnSecondary} onClick={() => setActiveTab('building')}>建筑</button>
       </div>
@@ -704,48 +720,66 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
         )}
 
         {activeTab === 'bank' && (
-          <div>
-            <h3 style={{ color: '#f6d365' }}>大洋银行</h3>
-            <div className={styles.statItem} style={{ marginBottom: '15px' }}>
-              <span className={styles.statLabel}>当前债务</span>
-              <span className={styles.statValue} style={{color: player.debt > 0 ? '#f44336' : '#fff'}}>💰 {player.debt}</span>
-            </div>
-            <div className={styles.statItem} style={{ marginBottom: '15px' }}>
-              <span className={styles.statLabel}>当前月利率</span>
-              <span className={styles.statValue}>{formatDebtMonthlyRate(currentDebtRate)}</span>
-            </div>
-            {borrowAmount > 0 && (
-              <div className={styles.statItem} style={{ marginBottom: '15px' }}>
-                <span className={styles.statLabel}>借后月利率</span>
-                <span className={styles.statValue}>{formatDebtMonthlyRate(debtRateAfterBorrow)}</span>
+          <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '1.5rem', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              🏦 大洋银行
+            </h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.9rem', color: '#eee', marginBottom: '5px' }}>当前债务</div>
+                <div style={{ fontSize: '1.8rem', color: player.debt > 0 ? '#ff5252' : '#81c784', fontWeight: 'bold', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                  {player.debt > 0 ? `💰${player.debt}` : '💰0'}
+                </div>
+                {player.debt > 20000 && <div style={{ fontSize: '0.8rem', color: '#ff5252', marginTop: '5px', fontWeight: 'bold' }}>⚠️ 债务超标，可能遭遇海上佣兵</div>}
               </div>
-            )}
-            <p className={styles.statLabel} style={{ marginBottom: '15px' }}>借钱越多利息越高，债务每分钟更新。</p>
-            <div className={styles.statItem} style={{ marginBottom: '15px' }}>
-              <span className={styles.statLabel}>信用额度</span>
-              <span className={styles.statValue}>💰 {creditLimit} (基于声望)</span>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.9rem', color: '#eee', marginBottom: '5px' }}>信用额度</div>
+                <div style={{ fontSize: '1.8rem', color: '#64b5f6', fontWeight: 'bold', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                  💰{creditLimit}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#ddd', marginTop: '5px' }}>基于当前声望评估</div>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button className={styles.btnPrimary} disabled={borrowAmount <= 0} onClick={doBorrow}>
-                借款 +{borrowAmount || 0}
-              </button>
-              {player.debt > 500 && (
-                <button className={styles.btnSecondary} disabled={player.gold < 500} onClick={() => doRepay(500)}>
-                  还款 500
-                </button>
-              )}
-              {player.debt > 0 ? (
-                <button className={styles.btnSecondary} disabled={player.gold < player.debt} onClick={() => doRepay(player.debt)}>
-                  全部还清 {player.debt}
-                </button>
-              ) : (
-                <button className={styles.btnSecondary} disabled>
-                  暂无债务
-                </button>
-              )}
+            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '15px', borderRadius: '8px', marginBottom: '25px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.95rem', color: '#fff' }}>当前月利率 (随借款额浮动)</span>
+                <span style={{ fontWeight: 'bold', color: '#ffb74d', fontSize: '1.1rem', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>{formatDebtMonthlyRate(currentDebtRate)}</span>
+              </div>
             </div>
-            {player.debt > 20000 && <p style={{ color: '#f44336', marginTop: '10px' }}>⚠️ 警告：您的债务已超标，讨债佣兵可能在海上拦截您！</p>}
+
+            <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  className={styles.btnPrimary} 
+                  style={{ flex: 1, margin: 0, padding: '15px', fontSize: '1.1rem', backgroundColor: '#1976d2', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold' }} 
+                  disabled={borrowAmount <= 0} 
+                  onClick={doBorrow}
+                >
+                  借款 💰{borrowAmount || 0}
+                </button>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  className={styles.btnSecondary} 
+                  style={{ flex: 1, margin: 0, padding: '12px', borderColor: '#4caf50', color: (player.gold < 500 || player.debt < 500) ? 'rgba(255,255,255,0.3)' : '#81c784', borderRadius: '8px', fontWeight: 'bold' }} 
+                  disabled={player.gold < 500 || player.debt < 500} 
+                  onClick={() => doRepay(500)}
+                >
+                  还款 💰500
+                </button>
+                <button 
+                  className={styles.btnSecondary} 
+                  style={{ flex: 1, margin: 0, padding: '12px', borderColor: player.debt > 0 && player.gold >= player.debt ? '#4caf50' : 'rgba(255,255,255,0.2)', color: player.debt > 0 && player.gold >= player.debt ? '#81c784' : 'rgba(255,255,255,0.3)', borderRadius: '8px', fontWeight: 'bold' }} 
+                  disabled={player.debt <= 0 || player.gold < player.debt} 
+                  onClick={() => doRepay(player.debt)}
+                >
+                  结清 💰{player.debt}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -867,7 +901,7 @@ export const PortScreen: React.FC<Props> = ({ player, setPlayer, onGoToRouteSele
                 }}
                 disabled={player.bounty === 0}
               >
-                黑市销账假身份 (花费 {player.bounty * 80} 金币)
+                黑市销账假身份 (清空通缉值，花费 {player.bounty * 80} 金币)
               </button>
 
               {isRouteVisible(player, 'route_legend') && isRouteUnlockAvailable(player, 'route_legend') && !player.unlockedRoutes.includes('route_legend') && (

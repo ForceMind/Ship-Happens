@@ -190,15 +190,7 @@ const TIME_CONTEXT = [
   ['月光照着船尾的航迹，旧传闻在夜航时听起来格外真实。', '深夜的海面只剩浪声，连最细小的动静都会被放大。']
 ];
 
-const ROUTE_OPTION_SUFFIX: Record<string, string> = {
-  route_coastal: '按近海规矩',
-  route_storm: '抢在横风前',
-  route_black_tide: '顺着黑潮判断',
-  route_coral: '避开浅礁',
-  route_monsoon: '借季风窗口',
-  route_legend: '按旧海图试探',
-  route_abyss: '冒深渊风险'
-};
+
 
 function pick<T>(items: T[] | undefined): T | undefined {
   if (!items || items.length === 0) return undefined;
@@ -242,29 +234,17 @@ function getContextPool(player: PlayerState, voyage: VoyageState): string[] {
   ];
 }
 
-function getOptionSuffix(player: PlayerState, voyage: VoyageState): string {
-  const suffixes = [
-    voyage.route?.id ? ROUTE_OPTION_SUFFIX[voyage.route.id] : undefined,
-    player.storyBranch === 'pirate' ? '按黑旗路数' : undefined,
-    player.storyBranch === 'governor' ? '按王室章程' : undefined,
-    player.voyageCount % 2 === 0 ? '趁潮水变化' : '听瞭望手口令'
-  ].filter(Boolean) as string[];
-  return pick(suffixes) || '看海况决定';
-}
+
 
 export function renderContextualEvent(event: GameEvent, player: PlayerState, voyage: VoyageState): GameEvent {
   const eventScene = EVENT_SCENES[event.id];
   const sceneDescription = pick(eventScene?.descriptions) || event.description;
   const contextLines = pickMany(getContextPool(player, voyage), 2);
-  const suffix = getOptionSuffix(player, voyage);
 
   return {
     ...event,
     description: [sceneDescription, ...contextLines].join(' '),
-    options: event.options.map(option => ({
-      ...option,
-      label: `${option.label}（${suffix}）`
-    }))
+    options: event.options // 保持选项文字原样，不强行追加重复的后缀
   };
 }
 

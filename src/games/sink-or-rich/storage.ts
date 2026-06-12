@@ -29,7 +29,7 @@ export function loadGame(): { player: PlayerState; voyage: VoyageState | null } 
     // Migration for legacy saves
     if (player) {
       if (!player.unlockedRoutes) {
-        player.unlockedRoutes = ['route_coastal'];
+        player.unlockedRoutes = ['route_royal_tortuga_1'];
       }
       if (!player.unlockedPorts) {
         player.unlockedPorts = ['port_royal', 'port_tortuga'];

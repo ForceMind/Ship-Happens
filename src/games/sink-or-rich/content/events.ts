@@ -13,6 +13,32 @@ const getRandomCargo = (): PlayerCargo => {
 
 export const GAME_EVENTS: GameEvent[] = [
   {
+    id: 'event_pirate_fast',
+    name: '强盗快船突袭',
+    description: '一艘异常灵活的轻型快船突然从暗礁后杀出，直奔你们而来！',
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_tortuga_2', 'route_royal_nassau', 'route_royal_cartagena', 'route_tortuga_nassau', 'route_nassau_cartagena', 'route_tortuga_cartagena', 'route_royal_azores', 'route_cartagena_azores', 'route_nassau_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_oriental_madagascar', 'route_tortuga_madagascar'],
+    options: [
+      {
+        id: 'pirate_fast_fight',
+        label: '迎战！',
+        resolve: (player, voyage) => {
+          return { player, voyage, message: '准备迎战快船！', combatEnemyId: 'enemy_pirate_2' };
+        }
+      },
+      {
+        id: 'pirate_fast_flee',
+        label: '挂满帆逃命',
+        resolve: (player, voyage) => {
+          const success = Math.random() < 0.2; // Very hard to flee
+          if (success) {
+            return { player, voyage: { ...voyage, log: ['你们借助侧风惊险地甩掉了快船！'] }, message: '你们甩掉了快船！' };
+          }
+          return { player, voyage, message: '快船的速度太惊人了，他们追上来了！', combatEnemyId: 'enemy_pirate_2' };
+        }
+      }
+    ]
+  },
+  {
     id: 'event_storm',
     name: '黑云压顶',
     description: '远处的天空像墨水一样沉下来，风暴正在逼近。',
@@ -55,7 +81,8 @@ export const GAME_EVENTS: GameEvent[] = [
           };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_2', 'route_tortuga_nassau', 'route_tortuga_cartagena', 'route_royal_azores', 'route_nassau_azores', 'route_oriental_madagascar', 'route_cartagena_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_reef',
@@ -103,7 +130,8 @@ export const GAME_EVENTS: GameEvent[] = [
           };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_tortuga_2', 'route_royal_nassau', 'route_royal_cartagena', 'route_tortuga_nassau', 'route_nassau_cartagena', 'route_tortuga_cartagena', 'route_royal_azores', 'route_cartagena_azores', 'route_nassau_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_oriental_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_floating_cargo',
@@ -162,7 +190,8 @@ export const GAME_EVENTS: GameEvent[] = [
           return { player, voyage, message: '为了安全起见，你们无视了货箱继续航行。' };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_tortuga_2', 'route_royal_nassau', 'route_royal_cartagena', 'route_tortuga_nassau', 'route_nassau_cartagena', 'route_tortuga_cartagena', 'route_royal_azores', 'route_cartagena_azores', 'route_nassau_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_oriental_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_shipwreck',
@@ -218,7 +247,8 @@ export const GAME_EVENTS: GameEvent[] = [
           };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_nassau', 'route_royal_cartagena', 'route_nassau_cartagena', 'route_royal_tortuga_2', 'route_tortuga_nassau', 'route_tortuga_cartagena', 'route_royal_azores', 'route_nassau_azores', 'route_oriental_madagascar']
   },
   {
     id: 'event_trade_winds',
@@ -262,7 +292,8 @@ export const GAME_EVENTS: GameEvent[] = [
           return { player, voyage, message: '你们没有冒险追风，保持原本航向继续前进。' };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_nassau', 'route_royal_cartagena', 'route_nassau_cartagena', 'route_royal_tortuga_2', 'route_tortuga_nassau', 'route_tortuga_cartagena', 'route_royal_azores', 'route_nassau_azores', 'route_oriental_madagascar']
   },
   {
     id: 'event_glowing_coral',
@@ -308,7 +339,8 @@ export const GAME_EVENTS: GameEvent[] = [
           return { player, voyage, message: '珊瑚太密，你们选择绕开，没有损失。' };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_tortuga_cartagena', 'route_royal_azores', 'route_nassau_azores', 'route_oriental_madagascar', 'route_cartagena_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_lost_fishermen',
@@ -344,7 +376,8 @@ export const GAME_EVENTS: GameEvent[] = [
           return { player, voyage, message: '你们没有靠近，小渔船很快消失在浪后。' };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_nassau', 'route_royal_cartagena', 'route_nassau_cartagena', 'route_royal_tortuga_2', 'route_tortuga_nassau']
   },
   {
     id: 'event_navy_flotsam',
@@ -385,7 +418,8 @@ export const GAME_EVENTS: GameEvent[] = [
           return { player, voyage, message: '你们绕过军需箱，免得惹上官司。' };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_tortuga_2', 'route_royal_nassau', 'route_royal_cartagena', 'route_tortuga_nassau', 'route_nassau_cartagena', 'route_tortuga_cartagena', 'route_royal_azores', 'route_cartagena_azores', 'route_nassau_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_oriental_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_damaged_merchant',
@@ -435,7 +469,8 @@ export const GAME_EVENTS: GameEvent[] = [
           return { player, voyage, message: '你们冷酷地离开了，毕竟大海上自顾不暇。' };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_nassau', 'route_royal_cartagena', 'route_nassau_cartagena', 'route_royal_tortuga_2', 'route_tortuga_nassau', 'route_tortuga_cartagena', 'route_royal_azores', 'route_nassau_azores', 'route_oriental_madagascar']
   },
   {
     id: 'event_pirate_block',
@@ -529,7 +564,8 @@ export const GAME_EVENTS: GameEvent[] = [
           };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_2', 'route_tortuga_nassau', 'route_tortuga_cartagena', 'route_royal_azores', 'route_nassau_azores', 'route_oriental_madagascar', 'route_cartagena_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_giant_octopus',
@@ -606,7 +642,8 @@ export const GAME_EVENTS: GameEvent[] = [
           };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_tortuga_cartagena', 'route_royal_azores', 'route_nassau_azores', 'route_oriental_madagascar', 'route_cartagena_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_sea_serpent',
@@ -649,7 +686,8 @@ export const GAME_EVENTS: GameEvent[] = [
           };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_cartagena_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_white_whale',
@@ -685,7 +723,8 @@ export const GAME_EVENTS: GameEvent[] = [
           return { player, voyage, message: '你们放下船帆，等鲸群远去。海面恢复平静。' };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_cartagena_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_patrol',
@@ -781,7 +820,8 @@ export const GAME_EVENTS: GameEvent[] = [
           };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_nassau', 'route_royal_cartagena', 'route_nassau_cartagena', 'route_royal_tortuga_2', 'route_tortuga_nassau']
   },
   {
     id: 'event_island',
@@ -859,7 +899,8 @@ export const GAME_EVENTS: GameEvent[] = [
           }
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_tortuga_2', 'route_royal_nassau', 'route_royal_cartagena', 'route_tortuga_nassau', 'route_nassau_cartagena', 'route_tortuga_cartagena', 'route_royal_azores', 'route_cartagena_azores', 'route_nassau_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_oriental_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_black_market',
@@ -917,7 +958,8 @@ export const GAME_EVENTS: GameEvent[] = [
           return { player, voyage, message: '不和这些法外狂徒打交道是明智的。' };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_tortuga_2', 'route_tortuga_nassau', 'route_tortuga_cartagena']
   },
   {
     id: 'event_siren',
@@ -984,7 +1026,8 @@ export const GAME_EVENTS: GameEvent[] = [
           }
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_tortuga_cartagena', 'route_royal_azores', 'route_nassau_azores', 'route_oriental_madagascar', 'route_cartagena_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_bottle',
@@ -1026,7 +1069,8 @@ export const GAME_EVENTS: GameEvent[] = [
           }
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_tortuga_2', 'route_royal_nassau', 'route_royal_cartagena', 'route_tortuga_nassau', 'route_nassau_cartagena', 'route_tortuga_cartagena', 'route_royal_azores', 'route_cartagena_azores', 'route_nassau_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_oriental_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_mutiny',
@@ -1073,7 +1117,8 @@ export const GAME_EVENTS: GameEvent[] = [
           }
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_tortuga_cartagena', 'route_royal_azores', 'route_nassau_azores', 'route_oriental_madagascar', 'route_cartagena_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_ghost_fog',
@@ -1127,7 +1172,8 @@ export const GAME_EVENTS: GameEvent[] = [
            }
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_cartagena_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_blockade',
@@ -1176,7 +1222,8 @@ export const GAME_EVENTS: GameEvent[] = [
           }
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_royal_tortuga_1', 'route_royal_nassau', 'route_royal_cartagena', 'route_nassau_cartagena', 'route_royal_tortuga_2', 'route_tortuga_nassau']
   },
   {
     id: 'event_whirlpool',
@@ -1221,7 +1268,8 @@ export const GAME_EVENTS: GameEvent[] = [
            };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_cartagena_azores', 'route_azores_oriental', 'route_azores_madagascar', 'route_tortuga_madagascar']
   },
   {
     id: 'event_leviathan',
@@ -1246,7 +1294,8 @@ export const GAME_EVENTS: GameEvent[] = [
           };
         }
       }
-    ]
+    ],
+    availableRoutes: ['route_tortuga_madagascar']
   },
   {
     id: 'event_debt_collector',
